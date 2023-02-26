@@ -1,5 +1,5 @@
 """Constants for the Deye Cloud API."""
-from .types import DeyeDeviceMode, DeyeFanSpeed, DeyeProductConfig
+from .types import DeyeDeviceMode, DeyeFanSpeed, DeyeProductPartialConfig
 
 DEYE_API_END_USER_ENDPOINT = "https://api.deye.com.cn/v3/enduser"
 DEYE_LOGIN_PARAM_APP_ID = "a774310e-a430-11e7-9d4c-00163e0c1b21"
@@ -7,7 +7,7 @@ DEYE_LOGIN_PARAM_EXTEND = '{"cid":"63d5b0df098443db906f857003f29d13","type":"1"}
 QUERY_DEVICE_STATE_COMMMAND = b"\x00\x01"
 
 
-PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductConfig] = {
+PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
     "default": {
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,

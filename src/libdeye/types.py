@@ -56,8 +56,20 @@ class DeyeFanSpeed(IntEnum):
     FULL = 4
 
 
-class DeyeProductConfig(TypedDict, total=False):
+class DeyeProductConfig(TypedDict):
     """Feature config for a specific Deye product"""
+
+    mode: list[DeyeDeviceMode]
+    fan_speed: list[DeyeFanSpeed]
+    min_target_humidity: int
+    max_target_humidity: int
+    anion: bool
+    oscillating: bool
+    water_pump: bool
+
+
+class DeyeProductPartialConfig(TypedDict, total=False):
+    """Feature config for a specific Deye product (partial)"""
 
     mode: list[DeyeDeviceMode]
     fan_speed: list[DeyeFanSpeed]
