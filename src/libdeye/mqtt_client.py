@@ -2,10 +2,11 @@
 import json
 from asyncio import Future, get_running_loop
 from collections.abc import Callable
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
-from .const import QUERY_DEVICE_STATE_COMMMAND
+from .const import QUERY_DEVICE_STATE_COMMAND
 from .device_state_command import DeyeDeviceState
 
 
@@ -29,7 +30,7 @@ class DeyeMqttClient:
         self._mqtt_host = host
         self._mqtt_ssl_port = ssl_port
         self._endpoint = endpoint
-        self._subscribers: dict[str, set[Callable[[DeyeDeviceState], None]]] = {}
+        self._subscribers: dict[str, set[Callable[[Any], None]]] = {}
         self._pending_commands: list[tuple[str, bytes]] = []
 
     def connect(self) -> None:
@@ -67,21 +68,18 @@ class DeyeMqttClient:
         try:
             data = json.loads(msg.payload)["data"]
             for callback in callbacks.copy():
-                self._loop.call_soon_threadsafe(callback, DeyeDeviceState(data))
+                self._loop.call_soon_threadsafe(callback, data)
         except (json.JSONDecodeError, KeyError):
             pass
 
     def _get_topic_prefix(self, product_id: str, device_id: str) -> str:
         return f"{self._endpoint}/{product_id}/{device_id}"
 
-    def subscribe(
+    def _subscribe_topic(
         self,
-        product_id: str,
-        device_id: str,
-        callback: Callable[[DeyeDeviceState], None],
+        topic: str,
+        callback: Callable[[Any], None],
     ) -> Callable[[], None]:
-        """Subscribe to state changes of specified device."""
-        topic = f"{self._get_topic_prefix(product_id, device_id)}/status/hex"
         if topic not in self._subscribers:
             self._subscribers[topic] = set()
         current_callback_len = len(self._subscribers[topic])
@@ -90,24 +88,35 @@ class DeyeMqttClient:
             self._mqtt.subscribe(topic)
 
         def unsubscribe() -> None:
-            self.unsubscribe(product_id, device_id, callback)
+            self._subscribers[topic].remove(callback)
+            if self._mqtt.is_connected() and len(self._subscribers[topic]) == 0:
+                self._mqtt.unsubscribe(topic)
 
         return unsubscribe
 
-    def unsubscribe(
+    def subscribe_state_change(
         self,
         product_id: str,
         device_id: str,
         callback: Callable[[DeyeDeviceState], None],
-    ) -> None:
-        """Unsubscribe to state changes of specified device. The `callback` param must be the same one passed into
-        `DeyeMqttClient.subscribe()`."""
-        topic = f"{self._get_topic_prefix(product_id, device_id)}/status/hex"
-        if topic not in self._subscribers:
-            return
-        self._subscribers[topic].remove(callback)
-        if self._mqtt.is_connected() and len(self._subscribers[topic]) == 0:
-            self._mqtt.unsubscribe(topic)
+    ) -> Callable[[], None]:
+        """Subscribe to state changes of specified device."""
+        return self._subscribe_topic(
+            f"{self._get_topic_prefix(product_id, device_id)}/status/hex",
+            lambda d: callback(DeyeDeviceState(d)),
+        )
+
+    def subscribe_availability_change(
+        self,
+        product_id: str,
+        device_id: str,
+        callback: Callable[[bool], None],
+    ) -> Callable[[], None]:
+        """Subscribe to availability changes of specified device."""
+        return self._subscribe_topic(
+            f"{self._get_topic_prefix(product_id, device_id)}/online/json",
+            lambda d: callback(d["online"]),
+        )
 
     def publish_command(self, product_id: str, device_id: str, command: bytes) -> None:
         """Publish commands to a device"""
@@ -122,12 +131,14 @@ class DeyeMqttClient:
     ) -> Future[DeyeDeviceState]:
         """Query the latest device state."""
         future: Future[DeyeDeviceState] = Future()
+        unsubscribe: Callable[[], None] | None = None
 
         def on_message(state: DeyeDeviceState) -> None:
             future.set_result(state)
-            self.unsubscribe(product_id, device_id, on_message)
+            if unsubscribe is not None:
+                unsubscribe()
 
-        self.subscribe(product_id, device_id, on_message)
-        self.publish_command(product_id, device_id, QUERY_DEVICE_STATE_COMMMAND)
+        unsubscribe = self.subscribe_state_change(product_id, device_id, on_message)
+        self.publish_command(product_id, device_id, QUERY_DEVICE_STATE_COMMAND)
 
         return future
