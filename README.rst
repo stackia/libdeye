@@ -99,7 +99,7 @@ Example Usage
                     state.power_switch = False  # Turn off the power switch
                     mqtt.publish_command(product_id, device_id, state.to_command().bytes())
 
-            mqtt.subscribe(
+            mqtt.subscribe_state_change(
                 product_id,
                 device_id,
                 on_deye_device_state_update,
