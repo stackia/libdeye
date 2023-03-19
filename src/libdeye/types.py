@@ -43,6 +43,8 @@ class DeyeDeviceMode(IntEnum):
     CLOTHES_DRYER_MODE = 1
     AIR_PURIFIER_MODE = 2
     AUTO_MODE = 3
+    UNKNOWN_MODE = 4
+    UNKNOWN_MODE_2 = 5
     SLEEP_MODE = 6
 
 

@@ -2,6 +2,12 @@
 Changelog
 =========
 
+Version 1.1.1
+===========
+
+- Allow unknown device mode to be parsed without exceptions
+
+
 Version 1.1.0
 ===========
 
