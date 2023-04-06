@@ -126,4 +126,4 @@ class DeyeApiResponseDeviceInfo(TypedDict):
     product_icon: str
     online: bool
     product_type: str
-    payload: str
+    payload: Any
