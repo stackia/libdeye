@@ -2,6 +2,12 @@
 Changelog
 =========
 
+Version 1.1.2
+===========
+
+- Fix incorrect type hint for device payload
+
+
 Version 1.1.1
 ===========
 
