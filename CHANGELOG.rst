@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 1.1.3
+===========
+
+- Retry login if the auth token is expired
+
 Version 1.1.2
 ===========
 

@@ -106,17 +106,22 @@ class DeyeCloudApi:
         except ClientError as err:
             raise DeyeCloudApiCannotConnectError from err
 
-        ensure_valid_response_code(result)
-
         try:
+            ensure_valid_response_code(result)
             token = result["data"]["token"]
             if token:
                 self.auth_token = token
                 if self.on_auth_token_refreshed:
                     self.on_auth_token_refreshed(token)
-                return
+            return
+        except DeyeCloudApiInvalidAuthError:
+            await self.authenticate()
+            if self.auth_token and self.on_auth_token_refreshed:
+                self.on_auth_token_refreshed(self.auth_token)
+            return
         except KeyError:
             pass
+
         raise DeyeCloudApiInvalidAuthError
 
     async def get_device_list(self) -> list[DeyeApiResponseDeviceInfo]:
