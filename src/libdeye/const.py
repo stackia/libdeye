@@ -1,4 +1,5 @@
 """Constants for the Deye Cloud API."""
+
 from .types import DeyeDeviceMode, DeyeFanSpeed, DeyeProductPartialConfig
 
 DEYE_API_END_USER_ENDPOINT = "https://api.deye.com.cn/v3/enduser"

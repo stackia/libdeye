@@ -1,4 +1,5 @@
 """MQTT related stuffs"""
+
 import json
 from asyncio import Future, get_running_loop
 from collections.abc import Callable

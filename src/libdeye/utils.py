@@ -1,4 +1,5 @@
 """Utility functions"""
+
 from typing import cast
 
 from .const import PRODUCT_FEATURE_CONFIG

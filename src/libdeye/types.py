@@ -1,4 +1,5 @@
 """Common types used in the library"""
+
 from enum import IntEnum, IntFlag, auto
 from typing import Any, TypedDict
 
