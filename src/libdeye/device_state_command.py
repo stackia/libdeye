@@ -1,4 +1,5 @@
 """Utilities for device state/command parsing"""
+
 from .types import (
     DeyeDeviceCommandFlag,
     DeyeDeviceMode,

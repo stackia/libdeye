@@ -1,4 +1,5 @@
 """Deye Cloud API related stuffs"""
+
 import time
 from collections.abc import Callable
 from typing import cast
