@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 1.2.0
+===========
+
+- Add support for DYD-890T / DYD-8138T
+
 Version 1.1.3
 ===========
 
