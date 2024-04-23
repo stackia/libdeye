@@ -97,8 +97,8 @@ class DeyeApiResponseEnvelope(TypedDict):
     data: Any
 
 
-class DeyeApiResponseMqttInfo(TypedDict):
-    """MQTT information returned by the API"""
+class DeyeApiResponseDeyePlatformMqttInfo(TypedDict):
+    """MQTT information for the Deye platform returned by the API"""
 
     password: str
     loginname: str
@@ -107,6 +107,62 @@ class DeyeApiResponseMqttInfo(TypedDict):
     clientid: str
     endpoint: str
     sslport: int
+
+
+class DeyeApiResponseFogPlatformMqttTopics(TypedDict):
+    """MQTT topics returned by the API"""
+
+    all: list[str]
+    pub: list[str]
+    sub: list[str]
+
+
+class DeyeApiResponseFogPlatformMqttInfo(TypedDict):
+    """MQTT information for the Fog platform returned by the API"""
+
+    username: str
+    clientid: str
+    password: str
+    mqtt_host: str
+    ws_port: str
+    ssl_port: str
+    topic: DeyeApiResponseFogPlatformMqttTopics
+    expire: int
+
+
+class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
+    """Device properties for the Fog platform returned by the API"""
+
+    CompressorStatus: int
+    CurrentAmbientTemperature: int
+    CurrentCoilTemperature: int
+    CurrentEnvironmentalHumidity: int
+    CurrentExhaustTemperature: int
+    Demisting: int
+    EnvironmentalRating: int
+    Fan: int
+    KeyLock: int
+    Mode: int
+    NegativeIon: int
+    Power: int
+    ProtocolVersion: int
+    SetHumidity: int
+    SolenoidValve: int
+    SwingingWind: int
+    TimedOff: int
+    TimedOn: int
+    TimedShutdownHourSetting: int
+    TimedShutdownMinuteSettingTime: int
+    TimedShutdownTimeRemainingHours: int
+    TimedShutdownTimeRemainingMinutes: int
+    TimedStartupHoursSetTime: int
+    TimedStartupMinuteSettingTime: int
+    TimedStartupTimeRemainingHours: int
+    TimedStartupTimeRemainingMinutes: int
+    WaterPump: int
+    WaterTank: int
+    WindSpeed: int
+    fault: dict[str, int]
 
 
 class DeyeApiResponseDeviceInfo(TypedDict):
