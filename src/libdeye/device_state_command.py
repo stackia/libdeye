@@ -1,4 +1,5 @@
 """Utilities for device state/command parsing"""
+
 import json
 
 from .types import (
@@ -79,27 +80,27 @@ class DeyeDeviceState:
     """A class to store the parse result of state string."""
 
     def __init__(self, state: object) -> None:
-        self.anion_switch : bool = False
-        self.water_pump_switch : bool = False
-        self.power_switch : bool = False
-        self.oscillating_switch : bool = False
-        self.child_lock_switch : bool = False
-        self.defrosting : bool = False
-        self.water_tank_full : bool = False
-        self.fan_running : bool = False
-        self.fan_speed : DeyeFanSpeed = DeyeFanSpeed.STOPPED
-        self.mode : DeyeDeviceMode = DeyeDeviceMode.SLEEP_MODE
-        self.target_humidity : int = 60
-        self.environment_temperature : int = 27
-        self.environment_humidity : int = 27
+        self.anion_switch: bool = False
+        self.water_pump_switch: bool = False
+        self.power_switch: bool = False
+        self.oscillating_switch: bool = False
+        self.child_lock_switch: bool = False
+        self.defrosting: bool = False
+        self.water_tank_full: bool = False
+        self.fan_running: bool = False
+        self.fan_speed: DeyeFanSpeed = DeyeFanSpeed.STOPPED
+        self.mode: DeyeDeviceMode = DeyeDeviceMode.SLEEP_MODE
+        self.target_humidity: int = 60
+        self.environment_temperature: int = 27
+        self.environment_humidity: int = 27
         # Unused attributes
-        self._electromagnetic_state : bool = False
-        self._press_state : bool = False
-        self._environment_degree : bool = False
-        self._poweroff_switch : bool = False
-        self._poweron_switch : bool = False
-        self._coil_temperature : int = 27
-        self._exhaust_temperature : int = 27
+        self._electromagnetic_state: bool = False
+        self._press_state: bool = False
+        self._environment_degree: bool = False
+        self._poweroff_switch: bool = False
+        self._poweron_switch: bool = False
+        self._coil_temperature: int = 27
+        self._exhaust_temperature: int = 27
         if type(state) is str:
             self.deal_v1_state(state)
         elif type(state) is dict:
@@ -152,8 +153,12 @@ class DeyeDeviceState:
         self.defrosting = False if state.get("Demisting") == 0 else True
         self.water_tank_full = False if state.get("WaterTank") == 0 else True
         self.fan_running = False if state.get("Fan") == 0 else True
-        self.fan_speed = DeyeFanSpeed(int(str(state.get("WindSpeed", DeyeFanSpeed.STOPPED))))
-        self.mode = DeyeDeviceMode(int(str(state.get("Mode", DeyeDeviceMode.SLEEP_MODE))))
+        self.fan_speed = DeyeFanSpeed(
+            int(str(state.get("WindSpeed", DeyeFanSpeed.STOPPED)))
+        )
+        self.mode = DeyeDeviceMode(
+            int(str(state.get("Mode", DeyeDeviceMode.SLEEP_MODE)))
+        )
         self.target_humidity = int(str(state.get("SetHumidity")))
         self.environment_temperature = int(str(state.get("CurrentAmbientTemperature")))
         self.environment_humidity = int(str(state.get("CurrentEnvironmentalHumidity")))
@@ -162,14 +167,15 @@ class DeyeDeviceState:
         self._coil_temperature = int(str(state.get("CurrentCoilTemperature")))
         self._exhaust_temperature = int(str(state.get("CurrentExhaustTemperature")))
 
-
     def to_str(self) -> str:
-        return json.dumps({
-            'anion_switch': self.anion_switch,
-            'water_pump_switch': self.water_pump_switch,
-            'power_switch': self.power_switch,
-            'mode': self.mode
-        })
+        return json.dumps(
+            {
+                "anion_switch": self.anion_switch,
+                "water_pump_switch": self.water_pump_switch,
+                "power_switch": self.power_switch,
+                "mode": self.mode,
+            }
+        )
 
     def to_command(self) -> DeyeDeviceCommand:
         """Convert to a command that can be used to let the device get into this state"""

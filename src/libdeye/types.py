@@ -164,6 +164,7 @@ class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
     WindSpeed: int
     fault: dict[str, int]
 
+
 class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
     """Device Command for the Fog platform sent to the API"""
 
@@ -175,6 +176,7 @@ class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
     NegativeIon: int
     SwingingWind: int
     WaterPump: int
+
 
 class DeyeApiResponseDeviceInfo(TypedDict):
     """Device information returned by the API"""
