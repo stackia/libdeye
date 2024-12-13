@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 1.3.0
+=============
+
+- Add fog api control support for new machine like DYD-T22A3, DYD-D50A3
+
 Version 1.2.0
 =============
 

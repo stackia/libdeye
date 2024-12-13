@@ -92,20 +92,28 @@ Example Usage
 
             product_id = devices[0]["product_id"]
             device_id = devices[0]["device_id"]
+            platform = devices[0]["platform"]
 
-            def on_deye_device_state_update(state: DeyeDeviceState) -> None:
-                print(
-                    f"Device state updated. Current humidity: {state.environment_humidity}"
+            if platform == 1:
+                def on_deye_device_state_update(state: DeyeDeviceState) -> None:
+                    print(
+                        f"Device state updated. Current humidity: {state.environment_humidity}"
+                    )
+                    if state.environment_humidity < 60:
+                        state.power_switch = False  # Turn off the power switch
+                        mqtt.publish_command(product_id, device_id, state.to_command().bytes())
+
+                mqtt.subscribe_state_change(
+                    product_id,
+                    device_id,
+                    on_deye_device_state_update,
                 )
-                if state.environment_humidity < 60:
-                    state.power_switch = False  # Turn off the power switch
-                    mqtt.publish_command(product_id, device_id, state.to_command().bytes())
 
-            mqtt.subscribe_state_change(
-                product_id,
-                device_id,
-                on_deye_device_state_update,
-            )
+            elif platform == 2:
+               state = DeyeDeviceState(await cloud_api.get_fog_platform_device_properties(device_id))
+               if state.environment_humidity < 60:
+                   state.power_switch = False   # Turn off the power switch
+                   await cloud_api.set_fog_platform_device_properties(device_id, state.to_command().json())
 
 
     loop = asyncio.get_event_loop()
