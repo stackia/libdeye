@@ -15,10 +15,10 @@ from .const import (
 )
 from .types import (
     DeyeApiResponseDeviceInfo,
-    DeyeApiResponseEnvelope,
     DeyeApiResponseDeyePlatformMqttInfo,
-    DeyeApiResponseFogPlatformMqttInfo,
+    DeyeApiResponseEnvelope,
     DeyeApiResponseFogPlatformDeviceProperties,
+    DeyeApiResponseFogPlatformMqttInfo,
 )
 
 
@@ -214,7 +214,9 @@ class DeyeCloudApi:
 
         ensure_valid_response_code(result)
 
-    async def set_fog_platform_device_properties(self, device_id: str, params: object) -> None:
+    async def set_fog_platform_device_properties(
+        self, device_id: str, params: object
+    ) -> None:
         """Poll properties for a device on the Fog platform"""
         await self.refresh_token_if_near_expiry()
 
@@ -225,13 +227,14 @@ class DeyeCloudApi:
                 json={
                     "device_id": device_id,
                     "params": params,
-                }
+                },
             )
             result: DeyeApiResponseEnvelope = await response.json()
         except ClientError as err:
             raise DeyeCloudApiCannotConnectError from err
 
         ensure_valid_response_code(result)
+
 
 def ensure_valid_response_code(result: DeyeApiResponseEnvelope) -> None:
     """Raise errors if we don't have a valid result["meta"]["code"]"""
