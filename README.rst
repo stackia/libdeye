@@ -36,6 +36,7 @@ Supported devices:
 * DYD-T22A3
 * DYD-TM208FC
 * DYD-U20A3
+* DYD-U20Air
 * DYD-V58A3
 * DYD-W20A3
 * DYD-W20A3-JD
@@ -53,6 +54,7 @@ Supported devices:
 * DYD-F20C3
 * DYD-JD121EC
 * DYD-JD201FC
+
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py#L63>`_.
 
