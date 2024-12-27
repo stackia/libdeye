@@ -4,6 +4,7 @@ import json
 from asyncio import Future, get_running_loop
 from collections.abc import Callable
 from typing import Any
+from ssl import SSLContext
 
 import paho.mqtt.client as mqtt
 
@@ -21,11 +22,15 @@ class DeyeMqttClient:
         username: str,
         password: str,
         endpoint: str,
+        tls_context: SSLContext | None = None,
     ) -> None:
         self._loop = get_running_loop()
         self._mqtt = mqtt.Client()
         self._mqtt.username_pw_set(username, password)
-        self._mqtt.tls_set()
+        if tls_context is not None:
+            self._mqtt.tls_set_context(tls_context)
+        else:
+            self._mqtt.tls_set()
         self._mqtt.on_connect = self._mqtt_on_connect
         self._mqtt.on_message = self._mqtt_on_message
         self._mqtt_host = host

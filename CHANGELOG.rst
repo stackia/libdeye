@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 1.3.2
+=============
+
+- Add support for passing an existing SSLContext to the MQTT client
+
 Version 1.3.1
 =============
 
