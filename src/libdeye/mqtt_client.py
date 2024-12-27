@@ -3,8 +3,8 @@
 import json
 from asyncio import Future, get_running_loop
 from collections.abc import Callable
-from typing import Any
 from ssl import SSLContext
+from typing import Any
 
 import paho.mqtt.client as mqtt
 
