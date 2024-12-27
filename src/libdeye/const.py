@@ -163,6 +163,19 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
+    "363b686a31ee11efb7203b3cd9717242": {  # U20Air
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.HIGH,
+        ],
+        "oscillating": False,
+        "water_pump": False,
+    },
     "2b770cba268611e89d4c00163e0c1b21": {  # V58A3
         "oscillating": False,
         "water_pump": False,

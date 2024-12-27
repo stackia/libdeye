@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 1.3.1
+=============
+
+- Add support for DYD-U20Air
+
 Version 1.3.0
 =============
 
