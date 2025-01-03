@@ -144,7 +144,7 @@ class DeyeDeviceState:
         self._coil_temperature = state_hex[14] - 40
         self._exhaust_temperature = state_hex[17] - 40
 
-    def deal_v2_state(self, state: dict) -> None:
+    def deal_v2_state(self, state: dict[str, int]) -> None:
         self.anion_switch = False if state.get("NegativeIon") == 0 else True
         self.water_pump_switch = False if state.get("WaterPump") == 0 else True
         self.power_switch = False if state.get("Power") == 0 else True

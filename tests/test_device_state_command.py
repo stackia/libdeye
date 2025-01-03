@@ -1,5 +1,5 @@
-from libdeye.const import DeyeFanSpeed
 from libdeye.device_state_command import DeyeDeviceCommand, DeyeDeviceState
+from libdeye.types import DeyeFanSpeed
 
 
 def test_deye_device_state_init() -> None:
