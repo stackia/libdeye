@@ -67,7 +67,7 @@ Command Line Tool
 This library also includes a command-line tool for testing and interacting with Deye devices.
 
 Installation
------------
+------------
 
 The CLI tool is automatically installed when you install the library:
 
@@ -117,7 +117,7 @@ Usage
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD refresh-token
 
 Using .env File
---------------
+---------------
 
 You can store your credentials in a .env file to avoid typing them in each command:
 
@@ -158,7 +158,7 @@ With device and product IDs in your .env file, you can simplify commands:
     deye-cli monitor
 
 Getting and Using Authentication Tokens
---------------------------------------
+---------------------------------------
 
 To avoid sending your username and password with each request, you can use an authentication token:
 
@@ -177,7 +177,7 @@ To avoid sending your username and password with each request, you can use an au
     deye-cli --token YOUR_TOKEN refresh-token
 
 Available Commands
-----------------
+------------------
 
 - ``devices``: List all devices connected to your account
 - ``products``: List all available product types
