@@ -1,4 +1,4 @@
-from libdeye.utils import get_product_feature_config
+from libdeye.const import get_product_feature_config
 
 
 def test_get_product_feature_config() -> None:

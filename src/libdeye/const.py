@@ -1,34 +1,61 @@
 """Constants for the Deye Cloud API."""
 
-from .types import DeyeDeviceMode, DeyeFanSpeed, DeyeProductPartialConfig
+from enum import IntEnum
+from typing import TypedDict
 
 DEYE_API_END_USER_ENDPOINT = "https://api.deye.com.cn/v3/enduser"
 DEYE_LOGIN_PARAM_APP_ID = "a774310e-a430-11e7-9d4c-00163e0c1b21"
 DEYE_LOGIN_PARAM_EXTEND = '{"cid":"63d5b0df098443db906f857003f29d12","type":"1"}'
-QUERY_DEVICE_STATE_COMMAND = b"\x00\x01"
+QUERY_DEVICE_STATE_COMMAND_CLASSIC = b"\x00\x01"
+
+
+class DeyeDeviceMode(IntEnum):
+    """All supported mode"""
+
+    MANUAL_MODE = 0
+    CLOTHES_DRYER_MODE = 1
+    AIR_PURIFIER_MODE = 2
+    AUTO_MODE = 3
+    UNKNOWN_MODE = 4
+    UNKNOWN_MODE_2 = 5
+    SLEEP_MODE = 6
+
+
+class DeyeFanSpeed(IntEnum):
+    """All supported fan speed"""
+
+    STOPPED = 0
+    LOW = 1
+    MIDDLE = 2
+    HIGH = 3
+    FULL = 4
+
+
+class DeyeProductConfig(TypedDict):
+    """Feature config for a specific Deye product"""
+
+    mode: list[DeyeDeviceMode]
+    fan_speed: list[DeyeFanSpeed]
+    min_target_humidity: int
+    max_target_humidity: int
+    anion: bool
+    oscillating: bool
+    water_pump: bool
+
+
+class DeyeProductPartialConfig(TypedDict, total=False):
+    """Feature config for a specific Deye product (partial)"""
+
+    mode: list[DeyeDeviceMode]
+    fan_speed: list[DeyeFanSpeed]
+    min_target_humidity: int
+    max_target_humidity: int
+    anion: bool
+    oscillating: bool
+    water_pump: bool
 
 
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
-    "default": {
-        "mode": [
-            DeyeDeviceMode.MANUAL_MODE,
-            DeyeDeviceMode.CLOTHES_DRYER_MODE,
-            DeyeDeviceMode.AIR_PURIFIER_MODE,
-            DeyeDeviceMode.AUTO_MODE,
-            DeyeDeviceMode.SLEEP_MODE,
-        ],
-        "fan_speed": [
-            DeyeFanSpeed.LOW,
-            DeyeFanSpeed.MIDDLE,
-            DeyeFanSpeed.HIGH,
-            DeyeFanSpeed.FULL,
-        ],
-        "min_target_humidity": 25,
-        "max_target_humidity": 80,
-        "anion": True,
-        "oscillating": True,
-        "water_pump": True,
-    },
     "07dddba41c3011e8829100163e0f811e": {  # 612S
         "mode": [],
         "fan_speed": [DeyeFanSpeed.LOW, DeyeFanSpeed.HIGH],
@@ -395,3 +422,31 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "water_pump": False,
     },
 }
+
+
+def get_product_feature_config(product_id: str) -> DeyeProductConfig:
+    """Get supported features of the product"""
+    default: DeyeProductConfig = {
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+            DeyeDeviceMode.AUTO_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+            DeyeFanSpeed.FULL,
+        ],
+        "min_target_humidity": 25,
+        "max_target_humidity": 80,
+        "anion": True,
+        "oscillating": True,
+        "water_pump": True,
+    }
+    try:
+        return default | PRODUCT_FEATURE_CONFIG[product_id]
+    except KeyError:
+        return default

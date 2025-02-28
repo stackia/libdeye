@@ -5,18 +5,20 @@ import argparse
 import asyncio
 import logging
 import sys
+from datetime import datetime
 from pathlib import Path
+from signal import SIGINT, SIGTERM
 from typing import Optional, cast
 
 import aiohttp
 
-from libdeye.cloud_api import DeyeCloudApi
-from libdeye.device_state_command import DeyeDeviceState
-from libdeye.mqtt_client import DeyeMqttClient
-from libdeye.types import (
+from .cloud_api import DeyeCloudApi, DeyeIotPlatform
+from .const import (
     DeyeDeviceMode,
     DeyeFanSpeed,
 )
+from .device_state import DeyeDeviceState
+from .mqtt_client import BaseDeyeMqttClient, DeyeClassicMqttClient, DeyeFogMqttClient
 
 
 def load_env_file(env_file: str = ".env") -> dict[str, str]:
@@ -59,6 +61,7 @@ async def list_devices(api: DeyeCloudApi) -> None:
         )
         print(f"   Product: {device['product_name']} ({device['product_id']})")
         print(f"   MAC: {device['mac']}")
+        print(f"   Platform: {DeyeIotPlatform(device['platform']).name}")
         print()
 
 
@@ -82,47 +85,62 @@ async def list_products(api: DeyeCloudApi) -> None:
             print()
 
 
-async def get_device_state(api: DeyeCloudApi, device_id: str, product_id: str) -> None:
+def print_device_state(state: DeyeDeviceState) -> None:
+    """Print the state of a device."""
+    print(f"  Power: {'On' if state.power_switch else 'Off'}")
+    print(f"  Mode: {state.mode.name}")
+    print(f"  Fan Speed: {state.fan_speed.name}")
+    print(f"  Target Humidity: {state.target_humidity}%")
+    print(f"  Current Humidity: {state.environment_humidity}%")
+    print(f"  Current Temperature: {state.environment_temperature}°C")
+    print(f"  Anion: {'On' if state.anion_switch else 'Off'}")
+    print(f"  Water Pump: {'On' if state.water_pump_switch else 'Off'}")
+    print(f"  Oscillating: {'On' if state.oscillating_switch else 'Off'}")
+    print(f"  Child Lock: {'On' if state.child_lock_switch else 'Off'}")
+    print(f"  Water Tank Full: {'Yes' if state.water_tank_full else 'No'}")
+    print(f"  Defrosting: {'Yes' if state.defrosting else 'No'}")
+
+
+async def get_device_state(api: DeyeCloudApi, device_id: str) -> None:
     """Get the current state of a device."""
-    # Get MQTT info
-    mqtt_info = await api.get_deye_platform_mqtt_info()
+    # Get device info to determine platform
+    devices = await api.get_device_list()
+    device_info = next((d for d in devices if d["device_id"] == device_id), None)
+
+    if not device_info:
+        print(f"Device {device_id} not found")
+        return
+
+    platform = DeyeIotPlatform(device_info["platform"])
+
+    # Get MQTT info based on platform
+    mqtt_client: BaseDeyeMqttClient
+
+    if platform == DeyeIotPlatform.Classic:
+        # Get MQTT info for Classic platform
+        mqtt_client = DeyeClassicMqttClient(api)
+    elif platform == DeyeIotPlatform.Fog:
+        # Get MQTT info for Fog platform
+        mqtt_client = DeyeFogMqttClient(api)
 
     # Connect to MQTT
-    mqtt_client = DeyeMqttClient(
-        host=mqtt_info["mqtthost"],
-        ssl_port=mqtt_info["sslport"],
-        username=mqtt_info["loginname"],
-        password=mqtt_info["password"],
-        endpoint=mqtt_info["endpoint"],
-    )
+    await mqtt_client.connect()
 
     # Create a future to get the device state
-    state_future = mqtt_client.query_device_state(product_id, device_id)
-
-    # Connect to MQTT
-    mqtt_client.connect()
+    state_future = mqtt_client.query_device_state(device_info["product_id"], device_id)
 
     try:
         # Wait for the state with a timeout
         state = await asyncio.wait_for(state_future, timeout=10.0)
 
         # Print the state
-        print(f"Device State for {device_id}:")
-        print(f"  Power: {'On' if state.power_switch else 'Off'}")
-        print(f"  Mode: {state.mode.name}")
-        print(f"  Fan Speed: {state.fan_speed.name}")
-        print(f"  Target Humidity: {state.target_humidity}%")
-        print(f"  Current Humidity: {state.environment_humidity}%")
-        print(f"  Current Temperature: {state.environment_temperature}°C")
-        print(f"  Anion: {'On' if state.anion_switch else 'Off'}")
-        print(f"  Water Pump: {'On' if state.water_pump_switch else 'Off'}")
-        print(f"  Oscillating: {'On' if state.oscillating_switch else 'Off'}")
-        print(f"  Child Lock: {'On' if state.child_lock_switch else 'Off'}")
-        print(f"  Water Tank Full: {'Yes' if state.water_tank_full else 'No'}")
-        print(f"  Defrosting: {'Yes' if state.defrosting else 'No'}")
+        print(f"Device State for {device_info['device_name']} ({device_id}):")
+        print_device_state(state)
 
     except asyncio.TimeoutError:
-        print(f"Timeout waiting for device state for {device_id}")
+        print(
+            f"Timeout waiting for device state for {device_info['device_name']} ({device_id})"
+        )
     finally:
         # Disconnect from MQTT
         mqtt_client.disconnect()
@@ -131,7 +149,6 @@ async def get_device_state(api: DeyeCloudApi, device_id: str, product_id: str) -
 async def set_device_state(
     api: DeyeCloudApi,
     device_id: str,
-    product_id: str,
     power: Optional[bool] = None,
     mode: Optional[DeyeDeviceMode] = None,
     fan_speed: Optional[DeyeFanSpeed] = None,
@@ -142,30 +159,38 @@ async def set_device_state(
     child_lock: Optional[bool] = None,
 ) -> None:
     """Set the state of a device."""
-    # Get MQTT info
-    mqtt_info = await api.get_deye_platform_mqtt_info()
+    # Get device info to determine platform
+    devices = await api.get_device_list()
+    device_info = next((d for d in devices if d["device_id"] == device_id), None)
+
+    if not device_info:
+        print(f"Device {device_id} not found")
+        return
+
+    platform = DeyeIotPlatform(device_info["platform"])
+
+    # Get MQTT info based on platform
+    mqtt_client: BaseDeyeMqttClient
+
+    if platform == DeyeIotPlatform.Classic:
+        # Get MQTT info for Classic platform
+        mqtt_client = DeyeClassicMqttClient(api)
+    elif platform == DeyeIotPlatform.Fog:
+        # Get MQTT info for Fog platform
+        mqtt_client = DeyeFogMqttClient(api)
 
     # Connect to MQTT
-    mqtt_client = DeyeMqttClient(
-        host=mqtt_info["mqtthost"],
-        ssl_port=mqtt_info["sslport"],
-        username=mqtt_info["loginname"],
-        password=mqtt_info["password"],
-        endpoint=mqtt_info["endpoint"],
-    )
+    await mqtt_client.connect()
 
-    # First get the current state
-    state_future = mqtt_client.query_device_state(product_id, device_id)
-
-    # Connect to MQTT
-    mqtt_client.connect()
+    # Create a future to get the device state
+    state_future = mqtt_client.query_device_state(device_info["product_id"], device_id)
 
     try:
         # Wait for the state with a timeout
-        current_state = await asyncio.wait_for(state_future, timeout=10.0)
+        state = await asyncio.wait_for(state_future, timeout=10.0)
 
         # Create a command based on the current state
-        command = current_state.to_command()
+        command = state.to_command()
 
         # Update the command with the new values
         if power is not None:
@@ -186,45 +211,50 @@ async def set_device_state(
             command.child_lock_switch = child_lock
 
         # Send the command
-        mqtt_client.publish_command(product_id, device_id, command.bytes())
+        await mqtt_client.publish_command(device_info["product_id"], device_id, command)
 
-        print(f"Command sent to device {device_id}")
+        print(f"Command sent to device {device_info['device_name']} ({device_id})")
 
     except asyncio.TimeoutError:
-        print(f"Timeout waiting for device state for {device_id}")
+        print(
+            f"Timeout waiting for device state for {device_info['device_name']} ({device_id})"
+        )
     finally:
         # Disconnect from MQTT
         mqtt_client.disconnect()
 
 
-async def monitor_device(
-    api: DeyeCloudApi, device_id: str, product_id: str, duration: int = 60
-) -> None:
-    """Monitor a device for state changes for a specified duration (in seconds)."""
-    # Get MQTT info
-    mqtt_info = await api.get_deye_platform_mqtt_info()
+async def monitor_device(api: DeyeCloudApi, device_id: str) -> None:
+    """Monitor a device for state updates."""
+    # Get device info to determine platform
+    devices = await api.get_device_list()
+    device_info = next((d for d in devices if d["device_id"] == device_id), None)
+
+    if not device_info:
+        print(f"Device {device_id} not found")
+        return
+
+    platform = DeyeIotPlatform(device_info["platform"])
+
+    # Get MQTT info based on platform
+    mqtt_client: BaseDeyeMqttClient
+
+    if platform == DeyeIotPlatform.Classic:
+        # Get MQTT info for Classic platform
+        mqtt_client = DeyeClassicMqttClient(api)
+    elif platform == DeyeIotPlatform.Fog:
+        # Get MQTT info for Fog platform
+        mqtt_client = DeyeFogMqttClient(api)
 
     # Connect to MQTT
-    mqtt_client = DeyeMqttClient(
-        host=mqtt_info["mqtthost"],
-        ssl_port=mqtt_info["sslport"],
-        username=mqtt_info["loginname"],
-        password=mqtt_info["password"],
-        endpoint=mqtt_info["endpoint"],
-    )
+    await mqtt_client.connect()
 
-    # Connect to MQTT
-    mqtt_client.connect()
-
-    # Set up state change callback
-    def on_state_change(state: DeyeDeviceState) -> None:
-        print(f"\nState change detected at {asyncio.get_event_loop().time():.2f}:")
-        print(f"  Power: {'On' if state.power_switch else 'Off'}")
-        print(f"  Mode: {state.mode.name}")
-        print(f"  Fan Speed: {state.fan_speed.name}")
-        print(f"  Target Humidity: {state.target_humidity}%")
-        print(f"  Current Humidity: {state.environment_humidity}%")
-        print(f"  Current Temperature: {state.environment_temperature}°C")
+    # Set up state update callback
+    def on_state_update(state: DeyeDeviceState) -> None:
+        print(
+            f"\nState update detected at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:"
+        )
+        print_device_state(state)
 
     # Set up availability change callback
     def on_availability_change(available: bool) -> None:
@@ -232,16 +262,21 @@ async def monitor_device(
 
     # Subscribe to state and availability changes
     unsubscribe_state = mqtt_client.subscribe_state_change(
-        product_id, device_id, on_state_change
+        device_info["product_id"], device_id, on_state_update
     )
     unsubscribe_availability = mqtt_client.subscribe_availability_change(
-        product_id, device_id, on_availability_change
+        device_info["product_id"], device_id, on_availability_change
     )
 
     try:
-        print(f"Monitoring device {device_id} for {duration} seconds...")
-        # Wait for the specified duration
-        await asyncio.sleep(duration)
+        print(f"Monitoring device {device_info['device_name']} ({device_id})...")
+        infinite_future: asyncio.Future[None] = asyncio.Future()
+        for signal in [SIGINT, SIGTERM]:
+            asyncio.get_running_loop().add_signal_handler(
+                signal, infinite_future.set_result, None
+            )
+        await infinite_future
+        print("Received exit, exiting")
     finally:
         # Unsubscribe and disconnect
         unsubscribe_state()
@@ -267,13 +302,37 @@ async def refresh_token(api: DeyeCloudApi) -> None:
     print("DEYE_AUTH_TOKEN=<your_token_here>")
 
 
+async def get_classic_mqtt_info(api: DeyeCloudApi) -> None:
+    """Get and display Classic platform MQTT information."""
+    mqtt_info = await api.get_deye_platform_mqtt_info()
+    print("Classic Platform MQTT Information:")
+    print(f"  MQTT Host: {mqtt_info['mqtthost']}")
+    print(f"  SSL Port: {mqtt_info['sslport']}")
+    print(f"  Client ID: {mqtt_info.get('clientid', 'N/A')}")
+    print(f"  Username: {mqtt_info['loginname']}")
+    print(f"  Password: {mqtt_info['password']}")
+    print(f"  Endpoint: {mqtt_info['endpoint']}")
+
+
+async def get_fog_mqtt_info(api: DeyeCloudApi) -> None:
+    """Get and display Fog platform MQTT information."""
+    mqtt_info = await api.get_fog_platform_mqtt_info()
+    print("Fog Platform MQTT Information:")
+    print(f"  MQTT Host: {mqtt_info['mqtt_host']}")
+    print(f"  SSL Port: {mqtt_info['ssl_port']}")
+    print(f"  Client ID: {mqtt_info.get('clientid', 'N/A')}")
+    print(f"  Username: {mqtt_info['username']}")
+    print(f"  Password: {mqtt_info['password']}")
+    print(f"  Expire: {mqtt_info['expire']}")
+    print(f"  Topics: {mqtt_info['topic']}")
+
+
 async def run_cli(
     args: argparse.Namespace,
     username: str,
     password: str,
     auth_token: Optional[str],
     device_id: Optional[str],
-    product_id: Optional[str],
 ) -> None:
     """Run the CLI with the given arguments."""
     # Create a single aiohttp session for the entire lifetime of the CLI
@@ -286,7 +345,7 @@ async def run_cli(
         elif args.command == "products":
             await list_products(api)
         elif args.command == "get":
-            await get_device_state(api, cast(str, device_id), cast(str, product_id))
+            await get_device_state(api, cast(str, device_id))
         elif args.command == "set":
             # Convert string arguments to appropriate types
             power = None
@@ -320,7 +379,6 @@ async def run_cli(
             await set_device_state(
                 api,
                 cast(str, device_id),
-                cast(str, product_id),
                 power=power,
                 mode=mode,
                 fan_speed=fan_speed,
@@ -331,13 +389,15 @@ async def run_cli(
                 child_lock=child_lock,
             )
         elif args.command == "monitor":
-            await monitor_device(
-                api, cast(str, device_id), cast(str, product_id), args.duration
-            )
+            await monitor_device(api, cast(str, device_id))
         elif args.command == "print-token":
             await print_auth_token(api)
         elif args.command == "refresh-token":
             await refresh_token(api)
+        elif args.command == "classic-mqtt":
+            await get_classic_mqtt_info(api)
+        elif args.command == "fog-mqtt":
+            await get_fog_mqtt_info(api)
 
 
 def main() -> None:
@@ -370,12 +430,10 @@ def main() -> None:
     # Get device state command
     get_parser = subparsers.add_parser("get", help="Get device state")
     get_parser.add_argument("--device-id", help="Device ID")
-    get_parser.add_argument("--product-id", help="Product ID")
 
     # Set device state command
     set_parser = subparsers.add_parser("set", help="Set device state")
     set_parser.add_argument("--device-id", help="Device ID")
-    set_parser.add_argument("--product-id", help="Product ID")
     set_parser.add_argument("--power", choices=["on", "off"], help="Power state")
     set_parser.add_argument(
         "--mode", choices=[mode.name for mode in DeyeDeviceMode], help="Device mode"
@@ -402,13 +460,6 @@ def main() -> None:
         "monitor", help="Monitor device state changes"
     )
     monitor_parser.add_argument("--device-id", help="Device ID")
-    monitor_parser.add_argument("--product-id", help="Product ID")
-    monitor_parser.add_argument(
-        "--duration",
-        type=int,
-        default=60,
-        help="Duration to monitor in seconds (default: 60)",
-    )
 
     # Print token command
     subparsers.add_parser(
@@ -419,6 +470,14 @@ def main() -> None:
     subparsers.add_parser(
         "refresh-token", help="Force refresh the authentication token"
     )
+
+    # Get Deye platform MQTT info command
+    subparsers.add_parser(
+        "classic-mqtt", help="Get MQTT information for Classic platform"
+    )
+
+    # Get Fog platform MQTT info command
+    subparsers.add_parser("fog-mqtt", help="Get MQTT information for Fog platform")
 
     args = parser.parse_args()
 
@@ -451,20 +510,17 @@ def main() -> None:
         )
         sys.exit(1)
 
-    # Get device ID and product ID from command line args or .env file
+    # Get device ID from command line args or .env file
     device_id = None
-    product_id = None
 
     if args.command in ["get", "set", "monitor"]:
         device_id = args.device_id or env_vars.get("DEYE_DEVICE_ID")
-        product_id = args.product_id or env_vars.get("DEYE_PRODUCT_ID")
 
-        if not device_id or not product_id:
-            print("Error: You must provide both device ID and product ID")
-            print("       via command line arguments or in the .env file.")
+        if not device_id:
             print(
-                "       Expected environment variables: DEYE_DEVICE_ID, DEYE_PRODUCT_ID"
+                "Error: You must provide device ID via command line arguments or in the .env file."
             )
+            print("       Expected environment variables: DEYE_DEVICE_ID")
             sys.exit(1)
 
     # Run the CLI
@@ -475,7 +531,6 @@ def main() -> None:
             cast(str, password),
             auth_token,
             device_id,
-            product_id,
         )
     )
 

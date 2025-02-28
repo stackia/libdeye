@@ -2,7 +2,8 @@
 
 import time
 from collections.abc import Callable
-from typing import cast
+from enum import IntEnum
+from typing import Any, TypedDict, cast
 
 import jwt
 from aiohttp import ClientSession
@@ -13,14 +14,172 @@ from .const import (
     DEYE_LOGIN_PARAM_APP_ID,
     DEYE_LOGIN_PARAM_EXTEND,
 )
-from .types import (
-    DeyeApiResponseDeviceInfo,
-    DeyeApiResponseDeyePlatformMqttInfo,
-    DeyeApiResponseEnvelope,
-    DeyeApiResponseFogPlatformDeviceProperties,
-    DeyeApiResponseFogPlatformMqttInfo,
-    DeyeApiResponseProductType,
-)
+
+
+class DeyeCloudApiInvalidAuthError(Exception):
+    """Error to indicate there is invalid auth."""
+
+
+class DeyeCloudApiCannotConnectError(Exception):
+    """Error to indicate we cannot connect."""
+
+
+class DeyeIotPlatform(IntEnum):
+    """IoT platform of devices"""
+
+    Classic = 1
+    Fog = 2
+
+
+class DeyeApiResponseEnvelopeMeta(TypedDict):
+    """Meta information for the API message envelope"""
+
+    code: int
+    message: str
+
+
+class DeyeApiResponseEnvelope(TypedDict):
+    """Message envelope for all API responses"""
+
+    meta: DeyeApiResponseEnvelopeMeta
+    data: Any
+
+
+def ensure_valid_response_code(result: DeyeApiResponseEnvelope) -> None:
+    """Raise errors if we don't have a valid result["meta"]["code"]"""
+    try:
+        if result["meta"]["code"] != 0:
+            raise DeyeCloudApiInvalidAuthError
+    except KeyError as err:
+        raise DeyeCloudApiCannotConnectError from err
+
+
+class DeyeApiResponseClassicPlatformMqttInfo(TypedDict):
+    """MQTT information for the Deye platform returned by the API"""
+
+    password: str
+    loginname: str
+    mqtthost: str
+    mqttport: int
+    clientid: str
+    endpoint: str
+    sslport: int
+
+
+class DeyeApiResponseFogPlatformMqttTopics(TypedDict):
+    """MQTT topics returned by the API"""
+
+    all: list[str]
+    pub: list[str]
+    sub: list[str]
+
+
+class DeyeApiResponseFogPlatformMqttInfo(TypedDict):
+    """MQTT information for the Fog platform returned by the API"""
+
+    username: str
+    clientid: str
+    password: str
+    mqtt_host: str
+    ws_port: str
+    ssl_port: str
+    topic: DeyeApiResponseFogPlatformMqttTopics
+    expire: int
+
+
+class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
+    """Device properties for the Fog platform returned by the API"""
+
+    CompressorStatus: int
+    CurrentAmbientTemperature: int
+    CurrentCoilTemperature: int
+    CurrentEnvironmentalHumidity: int
+    CurrentExhaustTemperature: int
+    Demisting: int
+    EnvironmentalRating: int
+    Fan: int
+    KeyLock: int
+    Mode: int
+    NegativeIon: int
+    Power: int
+    ProtocolVersion: int
+    SetHumidity: int
+    SolenoidValve: int
+    SwingingWind: int
+    TimedOff: int
+    TimedOn: int
+    TimedShutdownHourSetting: int
+    TimedShutdownMinuteSettingTime: int
+    TimedShutdownTimeRemainingHours: int
+    TimedShutdownTimeRemainingMinutes: int
+    TimedStartupHoursSetTime: int
+    TimedStartupMinuteSettingTime: int
+    TimedStartupTimeRemainingHours: int
+    TimedStartupTimeRemainingMinutes: int
+    WaterPump: int
+    WaterTank: int
+    WindSpeed: int
+    fault: dict[str, int]
+
+
+class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
+    """Device Command for the Fog platform sent to the API"""
+
+    KeyLock: int
+    Mode: int
+    Power: int
+    WindSpeed: int
+    SetHumidity: int
+    NegativeIon: int
+    SwingingWind: int
+    WaterPump: int
+
+
+class DeyeApiResponseDeviceInfo(TypedDict):
+    """Device information returned by the API"""
+
+    producttype_id: int
+    device_name: str
+    product_name: str
+    platform: DeyeIotPlatform
+    mac: str
+    protocol_version: str
+    gatewaytype: int
+    is_combo: bool
+    alias: str
+    deviceid: str
+    product_id: str
+    role: int
+    device_id: str
+    product_icon: str
+    online: bool
+    product_type: str
+    payload: Any
+    picture_v3: str
+    work_time: int
+    user_count: int
+
+
+class DeyeApiResponseProductDefinition(TypedDict):
+    """Product definition information returned by the API"""
+
+    productid: str
+    pname: str
+    brand: str
+    model: str
+    picture: str
+    picture_v3: str | None
+    config_guide: str
+    status: int
+    configType: int
+
+
+class DeyeApiResponseProductType(TypedDict):
+    """Product type information returned by the API"""
+
+    ptype: str
+    ptypename: str
+    pdata: list[DeyeApiResponseProductDefinition]
 
 
 class DeyeCloudApi:
@@ -70,7 +229,7 @@ class DeyeCloudApi:
         try:
             response = await self._session.post(
                 f"{DEYE_API_END_USER_ENDPOINT}/login/",
-                data={
+                json={
                     "appid": DEYE_LOGIN_PARAM_APP_ID,
                     "extend": DEYE_LOGIN_PARAM_EXTEND,
                     "pushtype": "Ali",
@@ -109,7 +268,7 @@ class DeyeCloudApi:
         try:
             response = await self._session.post(
                 f"{DEYE_API_END_USER_ENDPOINT}/refreshToken/",
-                data={"token": self.auth_token},
+                json={"token": self.auth_token},
             )
             result: DeyeApiResponseEnvelope = await response.json()
         except ClientError as err:
@@ -133,143 +292,97 @@ class DeyeCloudApi:
 
         raise DeyeCloudApiInvalidAuthError
 
-    async def get_device_list(self) -> list[DeyeApiResponseDeviceInfo]:
-        """Get all connected devices for current user"""
+    async def _make_authenticated_request(
+        self, method: str, endpoint: str, **kwargs: Any
+    ) -> DeyeApiResponseEnvelope:
+        """Make an authenticated request to the Deye API.
+
+        Args:
+            method: HTTP method (get, post)
+            endpoint: API endpoint path
+            **kwargs: Additional arguments to pass to the request
+
+        Returns:
+            The API response
+        """
         await self.refresh_token_if_near_expiry()
 
+        # Add authorization header if not present
+        headers = kwargs.get("headers", {})
+        if "Authorization" not in headers and self.auth_token:
+            headers["Authorization"] = f"JWT {self.auth_token}"
+            kwargs["headers"] = headers
+
+        url = f"{DEYE_API_END_USER_ENDPOINT}/{endpoint}"
+
         try:
-            response = await self._session.get(
-                f"{DEYE_API_END_USER_ENDPOINT}/deviceList/?app=new",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-            )
+            if method.lower() == "get":
+                response = await self._session.get(url, **kwargs)
+            elif method.lower() == "post":
+                response = await self._session.post(url, **kwargs)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+
             result: DeyeApiResponseEnvelope = await response.json()
         except ClientError as err:
             raise DeyeCloudApiCannotConnectError from err
 
         ensure_valid_response_code(result)
+        return result
+
+    async def get_device_list(self) -> list[DeyeApiResponseDeviceInfo]:
+        """Get all connected devices for current user"""
+        result = await self._make_authenticated_request("get", "deviceList/?app=new")
         return cast(list[DeyeApiResponseDeviceInfo], result["data"])
 
     async def get_product_list(self) -> list[DeyeApiResponseProductType]:
         """Get all available products"""
-        await self.refresh_token_if_near_expiry()
-
-        try:
-            response = await self._session.get(
-                f"{DEYE_API_END_USER_ENDPOINT}/productlist/?app=new",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-            )
-            result: DeyeApiResponseEnvelope = await response.json()
-        except ClientError as err:
-            raise DeyeCloudApiCannotConnectError from err
-
-        ensure_valid_response_code(result)
+        result = await self._make_authenticated_request("get", "productlist/?app=new")
         return cast(list[DeyeApiResponseProductType], result["data"]["result"])
 
-    async def get_deye_platform_mqtt_info(self) -> DeyeApiResponseDeyePlatformMqttInfo:
+    async def get_deye_platform_mqtt_info(
+        self,
+    ) -> DeyeApiResponseClassicPlatformMqttInfo:
         """Get MQTT server info / credentials for current user (Deye platform)"""
-        await self.refresh_token_if_near_expiry()
-
-        try:
-            response = await self._session.get(
-                f"{DEYE_API_END_USER_ENDPOINT}/mqttInfo/",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-            )
-            result: DeyeApiResponseEnvelope = await response.json()
-        except ClientError as err:
-            raise DeyeCloudApiCannotConnectError from err
-
-        ensure_valid_response_code(result)
-        return cast(DeyeApiResponseDeyePlatformMqttInfo, result["data"])
+        result = await self._make_authenticated_request("get", "mqttInfo/")
+        return cast(DeyeApiResponseClassicPlatformMqttInfo, result["data"])
 
     async def get_fog_platform_mqtt_info(self) -> DeyeApiResponseFogPlatformMqttInfo:
         """Get MQTT server info / credentials for current user (Fog platform)"""
-        await self.refresh_token_if_near_expiry()
-
-        try:
-            response = await self._session.get(
-                f"{DEYE_API_END_USER_ENDPOINT}/fogmqttinfo/",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-            )
-            result: DeyeApiResponseEnvelope = await response.json()
-        except ClientError as err:
-            raise DeyeCloudApiCannotConnectError from err
-
-        ensure_valid_response_code(result)
+        result = await self._make_authenticated_request("get", "fogmqttinfo/")
         return cast(DeyeApiResponseFogPlatformMqttInfo, result["data"])
 
     async def get_fog_platform_device_properties(
         self, device_id: str
     ) -> DeyeApiResponseFogPlatformDeviceProperties:
         """Get properties for a device on the Fog platform"""
-        await self.refresh_token_if_near_expiry()
-
-        try:
-            response = await self._session.get(
-                f"{DEYE_API_END_USER_ENDPOINT}/get/properties/?device_id={device_id}",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-            )
-            result: DeyeApiResponseEnvelope = await response.json()
-        except ClientError as err:
-            raise DeyeCloudApiCannotConnectError from err
-
-        ensure_valid_response_code(result)
+        result = await self._make_authenticated_request(
+            "get", f"get/properties/?device_id={device_id}"
+        )
         return cast(
             DeyeApiResponseFogPlatformDeviceProperties, result["data"]["properties"]
         )
 
     async def poll_fog_platform_device_properties(self, device_id: str) -> None:
         """Poll properties for a device on the Fog platform"""
-        await self.refresh_token_if_near_expiry()
-
-        try:
-            response = await self._session.post(
-                f"{DEYE_API_END_USER_ENDPOINT}/set/properties/",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-                data={
-                    "device_id": device_id,
-                    "params": {"RealData": 1},
-                },
-            )
-            result: DeyeApiResponseEnvelope = await response.json()
-        except ClientError as err:
-            raise DeyeCloudApiCannotConnectError from err
-
-        ensure_valid_response_code(result)
+        await self._make_authenticated_request(
+            "post",
+            "set/properties/",
+            json={
+                "device_id": device_id,
+                "params": {"RealData": 1},
+            },
+        )
 
     async def set_fog_platform_device_properties(
         self, device_id: str, params: object
     ) -> None:
-        """Poll properties for a device on the Fog platform"""
-        await self.refresh_token_if_near_expiry()
-
-        try:
-            response = await self._session.post(
-                f"{DEYE_API_END_USER_ENDPOINT}/set/properties/",
-                headers={"Authorization": f"JWT {self.auth_token}"},
-                json={
-                    "device_id": device_id,
-                    "params": params,
-                },
-            )
-            result: DeyeApiResponseEnvelope = await response.json()
-        except ClientError as err:
-            raise DeyeCloudApiCannotConnectError from err
-
-        ensure_valid_response_code(result)
-
-
-def ensure_valid_response_code(result: DeyeApiResponseEnvelope) -> None:
-    """Raise errors if we don't have a valid result["meta"]["code"]"""
-    try:
-        if result["meta"]["code"] != 0:
-            raise DeyeCloudApiInvalidAuthError
-    except KeyError as err:
-        raise DeyeCloudApiCannotConnectError from err
-
-
-class DeyeCloudApiInvalidAuthError(Exception):
-    """Error to indicate there is invalid auth."""
-
-
-class DeyeCloudApiCannotConnectError(Exception):
-    """Error to indicate we cannot connect."""
+        """Set properties for a device on the Fog platform"""
+        await self._make_authenticated_request(
+            "post",
+            "set/properties/",
+            json={
+                "device_id": device_id,
+                "params": params,
+            },
+        )

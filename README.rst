@@ -30,7 +30,7 @@ Supported devices:
 * DYD-E12A3
 * DYD-G25A3
 * DYD-N20A3
-* DYD-RLS48A3
+* DYD-L48A3
 * DYD-T22A3
 * DYD-U20A3
 * DYD-U20Air
@@ -83,13 +83,13 @@ Usage
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD devices
 
     # Get device state
-    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD get --device-id YOUR_DEVICE_ID --product-id YOUR_PRODUCT_ID
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD get --device-id YOUR_DEVICE_ID
 
     # Set device state
-    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --product-id YOUR_PRODUCT_ID --power on --target-humidity 50
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --power on --target-humidity 50
 
     # Monitor device state changes for 120 seconds
-    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD monitor --device-id YOUR_DEVICE_ID --product-id YOUR_PRODUCT_ID --duration 120
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD monitor --device-id YOUR_DEVICE_ID --duration 120
 
     # Enable debug logging
     deye-cli --debug --username YOUR_USERNAME --password YOUR_PASSWORD devices
@@ -124,7 +124,6 @@ The .env file format is simple:
     DEYE_AUTH_TOKEN=your_auth_token
     # Optional: store device and product IDs for quick access
     DEYE_DEVICE_ID=your_device_id
-    DEYE_PRODUCT_ID=your_product_id
 
 With device and product IDs in your .env file, you can simplify commands:
 
