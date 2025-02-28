@@ -24,8 +24,6 @@ libdeye
 
 Supported devices:
 
-* DYD-612S
-* DYD-6158EB/6160A
 * DYD-B12A3
 * DYD-D50A3
 * DYD-D50B3
@@ -34,29 +32,32 @@ Supported devices:
 * DYD-N20A3
 * DYD-RLS48A3
 * DYD-T22A3
-* DYD-TM208FC
 * DYD-U20A3
 * DYD-U20Air
 * DYD-V58A3
 * DYD-W20A3
-* DYD-W20A3-JD
+* DYD-W20A3-京鱼座
 * DYD-X20A3
 * DYD-Z12A3
 * DYD-Z20B3
-* DYD-Z20B3-QMX
-* DYD-890C
-* DYD-890T
-* DYD-6138A
-* DYD-8138C
-* DYD-8138T
+* DYD-Z20B3-天猫精灵
 * DYD-S12A3
-* DYD-620S
 * DYD-F20C3
-* DYD-JD121EC
-* DYD-JD201FC
+* JD121EC
+* JD201FC
+* TM208FC
+* DY-612S
+* DY-620S
+* DY-8220C
+* DY-890C
+* DY-890T
+* DY-6138A
+* DY-8138C
+* DY-8158C
+* DY-8158T
 
 
-For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py#L63>`_.
+For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py>`_.
 
 -----------------
 Command Line Tool

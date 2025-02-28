@@ -35,7 +35,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
-    "441480dcf29611eca05a0242ac480009": {  # 6158EB/6160A
+    "441480dcf29611eca05a0242ac480009": {  # 8220C
         "mode": [DeyeDeviceMode.MANUAL_MODE, DeyeDeviceMode.AUTO_MODE],
         "fan_speed": [DeyeFanSpeed.LOW, DeyeFanSpeed.HIGH],
         "max_target_humidity": 90,
@@ -117,7 +117,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
-    "5ea0feae4b1111ebb73c0242ac480009": {  # RLS48A3
+    "5ea0feae4b1111ebb73c0242ac480009": {  # L48A3
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,
             DeyeDeviceMode.CLOTHES_DRYER_MODE,
@@ -193,7 +193,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
-    "06e8c86cca0811e99d4c00163e0c1b21": {  # W20A3-JD
+    "06e8c86cca0811e99d4c00163e0c1b21": {  # W20A3-京鱼座
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,
             DeyeDeviceMode.CLOTHES_DRYER_MODE,
@@ -247,7 +247,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
-    "82547192d2a811e99d4c00163e0c1b21": {  # Z20B3-QMX
+    "82547192d2a811e99d4c00163e0c1b21": {  # Z20B3-天猫精灵
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,
             DeyeDeviceMode.CLOTHES_DRYER_MODE,
@@ -316,7 +316,21 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
-    "be47762e6bc711eea54d0242ac480009": {  # 8138T
+    "5b0033e0f65411ee880a0242ac480009": {  # 8158C
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.AUTO_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.HIGH,
+        ],
+        "max_target_humidity": 90,
+        "anion": False,
+        "oscillating": False,
+        "water_pump": False,
+    },
+    "be47762e6bc711eea54d0242ac480009": {  # 8158T
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,
             DeyeDeviceMode.AUTO_MODE,
