@@ -105,7 +105,7 @@ Clone the repository
    page. This creates a copy of the code under your account on |the repository service|.
 #. Clone this copy to your local disk::
 
-    git clone git@github.com:YourLogin/libdeye.git
+    git clone git@github.com:stackia/libdeye.git
     cd libdeye
 
 #. You should run::

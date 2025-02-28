@@ -1,4 +1,0 @@
-{
-  "python.analysis.typeCheckingMode": "off",
-  "mypy-type-checker.args": ["--config-file=./mypy.ini"]
-}
