@@ -4,9 +4,10 @@
 .. image:: https://results.pre-commit.ci/badge/github/stackia/libdeye/main.svg
     :target: https://results.pre-commit.ci/latest/github/stackia/libdeye/main
     :alt: pre-commit.ci status
+.. image:: https://codecov.io/gh/stackia/libdeye/graph/badge.svg?token=DUKdoWnYcw
+    :target: https://codecov.io/gh/stackia/libdeye
 .. image:: https://img.shields.io/pypi/v/libdeye.svg
     :alt: PyPI-Server
-    :target: https://pypi.org/project/libdeye/
 .. image:: https://pepy.tech/badge/libdeye/month
     :alt: Monthly Downloads
     :target: https://pepy.tech/project/libdeye

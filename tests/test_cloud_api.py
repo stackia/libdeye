@@ -2,21 +2,21 @@
 
 import time
 from typing import AsyncGenerator, Generator
+from unittest.mock import MagicMock, patch
 
 import jwt
 import pytest
 import pytest_asyncio
-from unittest.mock import patch, MagicMock
-from aiohttp import ClientSession, ClientError
+from aiohttp import ClientError, ClientSession
 from aioresponses import aioresponses
 
 from libdeye.cloud_api import (
+    DeyeApiResponseEnvelope,
     DeyeCloudApi,
-    DeyeCloudApiInvalidAuthError,
     DeyeCloudApiCannotConnectError,
+    DeyeCloudApiInvalidAuthError,
     DeyeIotPlatform,
     ensure_valid_response_code,
-    DeyeApiResponseEnvelope,
 )
 from libdeye.const import (
     DEYE_API_END_USER_ENDPOINT,

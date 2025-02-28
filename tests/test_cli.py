@@ -4,14 +4,16 @@ import argparse
 import asyncio
 import logging
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, ANY
+from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 import aiohttp
 import pytest
 
 from libdeye.cli import (
     authenticate,
+    get_classic_mqtt_info,
     get_device_state,
+    get_fog_mqtt_info,
     list_devices,
     list_products,
     load_env_file,
@@ -22,8 +24,6 @@ from libdeye.cli import (
     refresh_token,
     run_cli,
     set_device_state,
-    get_classic_mqtt_info,
-    get_fog_mqtt_info,
 )
 from libdeye.cloud_api import DeyeCloudApi, DeyeIotPlatform
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
