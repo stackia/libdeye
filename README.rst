@@ -8,6 +8,7 @@
     :target: https://codecov.io/gh/stackia/libdeye
     :alt: Codecov
 .. image:: https://img.shields.io/pypi/v/libdeye.svg
+    :target: https://pypi.org/project/libdeye/
     :alt: PyPI-Server
 .. image:: https://pepy.tech/badge/libdeye/month
     :alt: Monthly Downloads
