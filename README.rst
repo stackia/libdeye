@@ -6,14 +6,15 @@
     :alt: pre-commit.ci status
 .. image:: https://codecov.io/gh/stackia/libdeye/graph/badge.svg?token=DUKdoWnYcw
     :target: https://codecov.io/gh/stackia/libdeye
+    :alt: Codecov
 .. image:: https://img.shields.io/pypi/v/libdeye.svg
     :alt: PyPI-Server
 .. image:: https://pepy.tech/badge/libdeye/month
     :alt: Monthly Downloads
     :target: https://pepy.tech/project/libdeye
 .. image:: https://readthedocs.org/projects/libdeye/badge/?version=latest
-        :alt: ReadTheDocs
-        :target: https://libdeye.readthedocs.io/en/stable/
+    :alt: ReadTheDocs
+    :target: https://libdeye.readthedocs.io/en/stable/
 
 =======
 libdeye
