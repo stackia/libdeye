@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Version 2.0.0
+=============
+
+- Add full support for both Classic and Fog platforms.
+- The public interface has been redesigned to better support both platforms.
+- Add product definition for 8158C.
+- Add a new command-line tool for testing and interacting with Deye devices.
+
 Version 1.3.2
 =============
 
