@@ -58,6 +58,108 @@ Supported devices:
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py#L63>`_.
 
+-----------------
+Command Line Tool
+-----------------
+
+This library includes a command-line tool for testing and interacting with Deye devices during development.
+
+Installation
+-----------
+
+The CLI tool is automatically installed when you install the library:
+
+.. code-block:: bash
+
+    pip install libdeye
+
+Usage
+-----
+
+.. code-block:: bash
+
+    # List all devices
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD devices
+
+    # Get device state
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD get --device-id YOUR_DEVICE_ID --product-id YOUR_PRODUCT_ID
+
+    # Set device state
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --product-id YOUR_PRODUCT_ID --power on --target-humidity 50
+
+    # Monitor device state changes for 120 seconds
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD monitor --device-id YOUR_DEVICE_ID --product-id YOUR_PRODUCT_ID --duration 120
+
+    # Enable debug logging
+    deye-cli --debug --username YOUR_USERNAME --password YOUR_PASSWORD devices
+
+    # Print authentication token (useful for saving to .env file)
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD print-token
+
+Using .env File
+--------------
+
+You can store your credentials in a .env file to avoid typing them in each command:
+
+.. code-block:: bash
+
+    # Create a .env file in your working directory
+    echo "DEYE_USERNAME=your_username" > .env
+    echo "DEYE_PASSWORD=your_password" >> .env
+
+    # Now you can run commands without specifying credentials
+    deye-cli devices
+
+    # You can also specify a different .env file location
+    deye-cli --env-file /path/to/your/.env devices
+
+The .env file format is simple:
+
+.. code-block:: text
+
+    DEYE_USERNAME=your_phone_number_or_username
+    DEYE_PASSWORD=your_password
+    # Optional: store auth token to avoid login each time
+    DEYE_AUTH_TOKEN=your_auth_token
+    # Optional: store device and product IDs for quick access
+    DEYE_DEVICE_ID=your_device_id
+    DEYE_PRODUCT_ID=your_product_id
+
+With device and product IDs in your .env file, you can simplify commands:
+
+.. code-block:: bash
+
+    # Get device state without specifying device-id and product-id
+    deye-cli get
+
+    # Set device state without specifying device-id and product-id
+    deye-cli set --power on --target-humidity 50
+
+    # Monitor device state changes
+    deye-cli monitor --duration 120
+
+Getting and Using Authentication Tokens
+--------------------------------------
+
+To avoid sending your username and password with each request, you can use an authentication token:
+
+.. code-block:: bash
+
+    # Get your authentication token
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD print-token
+
+    # Copy the token and add it to your .env file
+    echo "DEYE_AUTH_TOKEN=your_token_here" >> .env
+
+    # Now you can use the token instead of username/password
+    deye-cli devices
+
+For more options, run:
+
+.. code-block:: bash
+
+    deye-cli --help
+
 -------------
 Example Usage
 -------------

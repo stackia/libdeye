@@ -19,6 +19,7 @@ from .types import (
     DeyeApiResponseEnvelope,
     DeyeApiResponseFogPlatformDeviceProperties,
     DeyeApiResponseFogPlatformMqttInfo,
+    DeyeApiResponseProductType,
 )
 
 
@@ -40,6 +41,7 @@ class DeyeCloudApi:
         self._username = username
         self._password = password
         self.auth_token = auth_token
+        self.on_auth_token_refreshed = None
 
     @property
     def auth_token(self) -> str | None:
@@ -91,13 +93,17 @@ class DeyeCloudApi:
             pass
         raise DeyeCloudApiInvalidAuthError
 
-    async def refresh_token_if_near_expiry(self) -> None:
+    async def refresh_token_if_near_expiry(self, force: bool = False) -> None:
         """Get a new auth token by calling /refreshToken if the current auth token is about to be expired. This will be
-        automatically called for each API call."""
+        automatically called for each API call.
+
+        Args:
+            force: If True, refresh the token regardless of expiry time.
+        """
         if self._auth_token_exp is None:
             raise DeyeCloudApiInvalidAuthError
 
-        if self._auth_token_exp - time.time() > 24 * 60 * 60:
+        if not force and self._auth_token_exp - time.time() > 24 * 60 * 60:
             return
 
         try:
@@ -142,6 +148,22 @@ class DeyeCloudApi:
 
         ensure_valid_response_code(result)
         return cast(list[DeyeApiResponseDeviceInfo], result["data"])
+
+    async def get_product_list(self) -> list[DeyeApiResponseProductType]:
+        """Get all available products"""
+        await self.refresh_token_if_near_expiry()
+
+        try:
+            response = await self._session.get(
+                f"{DEYE_API_END_USER_ENDPOINT}/productlist/?app=new",
+                headers={"Authorization": f"JWT {self.auth_token}"},
+            )
+            result: DeyeApiResponseEnvelope = await response.json()
+        except ClientError as err:
+            raise DeyeCloudApiCannotConnectError from err
+
+        ensure_valid_response_code(result)
+        return cast(list[DeyeApiResponseProductType], result["data"]["result"])
 
     async def get_deye_platform_mqtt_info(self) -> DeyeApiResponseDeyePlatformMqttInfo:
         """Get MQTT server info / credentials for current user (Deye platform)"""

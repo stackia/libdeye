@@ -59,6 +59,13 @@ class DeyeFanSpeed(IntEnum):
     FULL = 4
 
 
+class DeyeIotPlatform(IntEnum):
+    """IoT platform of devices"""
+
+    Deye = 1
+    Fog = 2
+
+
 class DeyeProductConfig(TypedDict):
     """Feature config for a specific Deye product"""
 
@@ -184,7 +191,7 @@ class DeyeApiResponseDeviceInfo(TypedDict):
     producttype_id: int
     device_name: str
     product_name: str
-    platform: int
+    platform: DeyeIotPlatform
     mac: str
     protocol_version: str
     gatewaytype: int
@@ -198,3 +205,28 @@ class DeyeApiResponseDeviceInfo(TypedDict):
     online: bool
     product_type: str
     payload: Any
+    picture_v3: str
+    work_time: int
+    user_count: int
+
+
+class DeyeApiResponseProductDefinition(TypedDict):
+    """Product definition information returned by the API"""
+
+    productid: str
+    pname: str
+    brand: str
+    model: str
+    picture: str
+    picture_v3: str | None
+    config_guide: str
+    status: int
+    configType: int
+
+
+class DeyeApiResponseProductType(TypedDict):
+    """Product type information returned by the API"""
+
+    ptype: str
+    ptypename: str
+    pdata: list[DeyeApiResponseProductDefinition]
