@@ -37,7 +37,7 @@ class DeyeDeviceState:
         self._exhaust_temperature: int = 27
         if isinstance(state, str):
             self._parse_state_classic(state)
-        elif isinstance(state, dict):
+        else:
             self._parse_state_fog(state)
 
     def _parse_state_classic(self, state: str) -> None:

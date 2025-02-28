@@ -4,7 +4,7 @@ import argparse
 import asyncio
 import logging
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch, ANY
 
 import aiohttp
 import pytest
@@ -22,6 +22,8 @@ from libdeye.cli import (
     refresh_token,
     run_cli,
     set_device_state,
+    get_classic_mqtt_info,
+    get_fog_mqtt_info,
 )
 from libdeye.cloud_api import DeyeCloudApi, DeyeIotPlatform
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
@@ -606,3 +608,141 @@ def test_main_successful_run() -> None:
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
         mock_run.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_get_classic_mqtt_info() -> None:
+    """Test getting classic MQTT info."""
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+    mock_mqtt_info = {
+        "password": "test_password",
+        "loginname": "test_login",
+        "mqtthost": "test.mqtt.host",
+        "mqttport": 1883,
+        "clientid": "test_client_id",
+        "endpoint": "test_endpoint",
+        "sslport": 8883,
+    }
+    mock_api.get_deye_platform_mqtt_info.return_value = mock_mqtt_info
+
+    with patch("builtins.print") as mock_print:
+        await get_classic_mqtt_info(mock_api)
+
+    mock_api.get_deye_platform_mqtt_info.assert_called_once()
+    assert mock_print.call_count > 0
+    # Check that all MQTT info values are printed in formatted strings
+    mock_print.assert_any_call("Classic Platform MQTT Information:")
+    mock_print.assert_any_call("  MQTT Host: test.mqtt.host")
+    mock_print.assert_any_call("  SSL Port: 8883")
+    mock_print.assert_any_call("  Client ID: test_client_id")
+    mock_print.assert_any_call("  Username: test_login")
+    mock_print.assert_any_call("  Password: test_password")
+    mock_print.assert_any_call("  Endpoint: test_endpoint")
+
+
+@pytest.mark.asyncio
+async def test_get_fog_mqtt_info() -> None:
+    """Test getting fog MQTT info."""
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+    mock_mqtt_info = {
+        "username": "test_username",
+        "clientid": "test_client_id",
+        "password": "test_password",
+        "mqtt_host": "test.mqtt.host",
+        "ws_port": "8083",
+        "ssl_port": "8883",
+        "topic": {
+            "all": ["topic1", "topic2"],
+            "pub": ["pub_topic"],
+            "sub": ["sub_topic"],
+        },
+        "expire": 3600,
+    }
+    mock_api.get_fog_platform_mqtt_info.return_value = mock_mqtt_info
+
+    with patch("builtins.print") as mock_print:
+        await get_fog_mqtt_info(mock_api)
+
+    mock_api.get_fog_platform_mqtt_info.assert_called_once()
+    assert mock_print.call_count > 0
+    # Check that all MQTT info values are printed in formatted strings
+    mock_print.assert_any_call("Fog Platform MQTT Information:")
+    mock_print.assert_any_call("  MQTT Host: test.mqtt.host")
+    mock_print.assert_any_call("  SSL Port: 8883")
+    mock_print.assert_any_call("  Client ID: test_client_id")
+    mock_print.assert_any_call("  Username: test_username")
+    mock_print.assert_any_call("  Password: test_password")
+    mock_print.assert_any_call("  Expire: 3600")
+    mock_print.assert_any_call(
+        "  Topics: {'all': ['topic1', 'topic2'], 'pub': ['pub_topic'], 'sub': ['sub_topic']}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_run_cli_classic_mqtt_command() -> None:
+    """Test running the CLI with the classic-mqtt command."""
+    mock_args = MagicMock()
+    mock_args.command = "classic-mqtt"
+
+    with patch("libdeye.cli.authenticate") as mock_authenticate:
+        mock_api = AsyncMock()
+        mock_authenticate.return_value = mock_api
+
+        with patch("libdeye.cli.get_classic_mqtt_info") as mock_get_classic_mqtt_info:
+            await run_cli(mock_args, "test_user", "test_password", None, None)
+
+    mock_authenticate.assert_called_once_with(ANY, "test_user", "test_password", None)
+    mock_get_classic_mqtt_info.assert_called_once_with(mock_api)
+
+
+@pytest.mark.asyncio
+async def test_run_cli_fog_mqtt_command() -> None:
+    """Test running the CLI with the fog-mqtt command."""
+    mock_args = MagicMock()
+    mock_args.command = "fog-mqtt"
+
+    with patch("libdeye.cli.authenticate") as mock_authenticate:
+        mock_api = AsyncMock()
+        mock_authenticate.return_value = mock_api
+
+        with patch("libdeye.cli.get_fog_mqtt_info") as mock_get_fog_mqtt_info:
+            await run_cli(mock_args, "test_user", "test_password", None, None)
+
+    mock_authenticate.assert_called_once_with(ANY, "test_user", "test_password", None)
+    mock_get_fog_mqtt_info.assert_called_once_with(mock_api)
+
+
+@pytest.mark.asyncio
+async def test_run_cli_token_command() -> None:
+    """Test running the CLI with the token command."""
+    mock_args = MagicMock()
+    mock_args.command = "print-token"
+
+    with patch("libdeye.cli.authenticate") as mock_authenticate:
+        mock_api = AsyncMock()
+        mock_authenticate.return_value = mock_api
+
+        with patch("libdeye.cli.print_auth_token") as mock_print_auth_token:
+            await run_cli(mock_args, "test_user", "test_password", None, None)
+
+    mock_authenticate.assert_called_once_with(ANY, "test_user", "test_password", None)
+    mock_print_auth_token.assert_called_once_with(mock_api)
+
+
+@pytest.mark.asyncio
+async def test_run_cli_refresh_command() -> None:
+    """Test running the CLI with the refresh command."""
+    mock_args = MagicMock()
+    mock_args.command = "refresh-token"
+
+    with patch("libdeye.cli.authenticate") as mock_authenticate:
+        mock_api = AsyncMock()
+        mock_authenticate.return_value = mock_api
+
+        with patch("libdeye.cli.refresh_token") as mock_refresh_token:
+            await run_cli(mock_args, "test_user", "test_password", "test_token", None)
+
+    mock_authenticate.assert_called_once_with(
+        ANY, "test_user", "test_password", "test_token"
+    )
+    mock_refresh_token.assert_called_once_with(mock_api)

@@ -15,6 +15,8 @@ from libdeye.cloud_api import (
     DeyeCloudApiInvalidAuthError,
     DeyeCloudApiCannotConnectError,
     DeyeIotPlatform,
+    ensure_valid_response_code,
+    DeyeApiResponseEnvelope,
 )
 from libdeye.const import (
     DEYE_API_END_USER_ENDPOINT,
@@ -708,3 +710,79 @@ async def test_set_fog_platform_device_properties(
     await api_client.set_fog_platform_device_properties(device_id, params)
 
     # No assertion needed, just checking that the request was made correctly
+
+
+def test_ensure_valid_response_code() -> None:
+    """Test the ensure_valid_response_code function."""
+    # Test valid response
+    valid_response: DeyeApiResponseEnvelope = {
+        "meta": {"code": 0, "message": "Success"},
+        "data": {},
+    }
+    ensure_valid_response_code(valid_response)  # Should not raise an exception
+
+    # Test invalid auth response
+    invalid_auth_response: DeyeApiResponseEnvelope = {
+        "meta": {"code": 401, "message": "Unauthorized"},
+        "data": {},
+    }
+    with pytest.raises(DeyeCloudApiInvalidAuthError):
+        ensure_valid_response_code(invalid_auth_response)
+
+    # Test other error response
+    other_error_response: DeyeApiResponseEnvelope = {
+        "meta": {"code": 500, "message": "Internal Server Error"},
+        "data": {},
+    }
+    with pytest.raises(Exception):
+        ensure_valid_response_code(other_error_response)
+
+
+@pytest.mark.asyncio
+async def test_make_authenticated_request_connection_error(
+    api_client: DeyeCloudApi, mock_auth_token: str, mock_aioresponse: aioresponses
+) -> None:
+    """Test making an authenticated request with a connection error."""
+    api_client.auth_token = mock_auth_token
+
+    # Mock the refresh token endpoint to avoid authentication errors
+    mock_aioresponse.post(
+        f"{DEYE_API_END_USER_ENDPOINT}/refreshToken/",
+        status=200,
+        payload={
+            "meta": {"code": 0, "message": "success"},
+            "data": {"token": mock_auth_token},
+        },
+    )
+
+    # Mock the get method to raise a ClientError
+    with patch.object(api_client._session, "get") as mock_get:
+        mock_get.side_effect = ClientError("Connection error")
+
+        with pytest.raises(DeyeCloudApiCannotConnectError):
+            await api_client._make_authenticated_request("GET", "/test/endpoint")
+
+        mock_get.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_refresh_token_connection_error(
+    api_client: DeyeCloudApi, mock_auth_token: str
+) -> None:
+    """Test refreshing token with a connection error."""
+    # Create a token that expires in 10 seconds
+    exp_time = int(time.time()) + 10
+    payload = {
+        "enduserid": "test_user_id",
+        "exp": exp_time,
+    }
+    token = jwt.encode(payload, "secret", algorithm="HS256")
+    api_client.auth_token = token
+
+    # Mock the session.post method to raise a ClientError
+    with patch.object(api_client._session, "post") as mock_post:
+        mock_post.side_effect = ClientError("Connection error")
+
+        # Should raise DeyeCloudApiCannotConnectError
+        with pytest.raises(DeyeCloudApiCannotConnectError):
+            await api_client.refresh_token_if_near_expiry()
