@@ -112,6 +112,30 @@ class DeyeDeviceState:
             self.target_humidity,
         )
 
+    def __eq__(self, other: object) -> bool:
+        """Check if two device states are equal.
+
+        Only compares public attributes that represent the actual device state.
+        """
+        if not isinstance(other, DeyeDeviceState):
+            return False
+
+        return (
+            self.anion_switch == other.anion_switch
+            and self.water_pump_switch == other.water_pump_switch
+            and self.power_switch == other.power_switch
+            and self.oscillating_switch == other.oscillating_switch
+            and self.child_lock_switch == other.child_lock_switch
+            and self.defrosting == other.defrosting
+            and self.water_tank_full == other.water_tank_full
+            and self.fan_running == other.fan_running
+            and self.fan_speed == other.fan_speed
+            and self.mode == other.mode
+            and self.target_humidity == other.target_humidity
+            and self.environment_temperature == other.environment_temperature
+            and self.environment_humidity == other.environment_humidity
+        )
+
 
 class DeyeDeviceStateFlag(IntFlag):
     """Bit flags used in the state string"""

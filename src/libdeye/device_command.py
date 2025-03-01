@@ -31,6 +31,22 @@ class DeyeDeviceCommand:
         self.mode = mode
         self.target_humidity = target_humidity
 
+    def __eq__(self, other: object) -> bool:
+        """Check if two DeyeDeviceCommand instances are equal."""
+        if not isinstance(other, DeyeDeviceCommand):
+            return False
+
+        return (
+            self.anion_switch == other.anion_switch
+            and self.water_pump_switch == other.water_pump_switch
+            and self.power_switch == other.power_switch
+            and self.oscillating_switch == other.oscillating_switch
+            and self.child_lock_switch == other.child_lock_switch
+            and self.fan_speed == other.fan_speed
+            and self.mode == other.mode
+            and self.target_humidity == other.target_humidity
+        )
+
     def to_bytes(self) -> bytes:
         """Get binary representation of this command"""
         command_flag = DeyeDeviceCommandFlag(0)
