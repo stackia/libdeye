@@ -2,6 +2,13 @@
 Changelog
 =========
 
+Version 2.0.1
+=============
+
+- Fix MQTT authentication by refreshing auth info on client disconnects to avoid expired password issues.
+- Add additional tests for MQTT client implementation.
+- Improve documentation and README.
+
 Version 2.0.0
 =============
 
