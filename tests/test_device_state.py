@@ -194,3 +194,110 @@ def test_deye_device_state_fog_missing_values() -> None:
     assert state.target_humidity == 60
     assert state.environment_temperature == 27
     assert state.environment_humidity == 27
+
+
+def test_deye_device_state_equality_same_state() -> None:
+    """Test that two device states with identical attributes are equal"""
+    state1 = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+    state2 = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+
+    assert state1 == state2
+    assert state2 == state1
+
+    # Identity equality
+    assert state1 == state1
+
+
+def test_deye_device_state_equality_different_state() -> None:
+    """Test that two device states with different attributes are not equal"""
+    state1 = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+    state2 = DeyeDeviceState("14110703113B00000000000000000040300000000000")
+
+    assert state1 != state2
+    assert state2 != state1
+
+
+def test_deye_device_state_equality_modified_state() -> None:
+    """Test equality after modifying device state attributes"""
+    state1 = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+    state2 = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+
+    # Initially equal
+    assert state1 == state2
+
+    # Modify one attribute
+    state2.anion_switch = not state2.anion_switch
+    assert state1 != state2
+
+    # Make them equal again
+    state1.anion_switch = state2.anion_switch
+    assert state1 == state2
+
+    # Test with several attributes modified
+    state2.water_pump_switch = True
+    state2.target_humidity = 45
+    state2.fan_speed = DeyeFanSpeed.HIGH
+    assert state1 != state2
+
+
+def test_deye_device_state_equality_different_types() -> None:
+    """Test equality between a device state and other types of objects"""
+    state = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+
+    # Compare with None
+    assert state is not None
+
+    # Compare with other types
+    assert state != "a string"
+    assert state != 123
+    assert state != {}
+    assert state != []
+
+
+def test_deye_device_state_equality_fog_and_classic() -> None:
+    """Test equality between states created from fog platform and classic"""
+    # Create state from classic protocol
+    state_classic = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+
+    # Create a minimal fog state
+    fog_state: FogDevicePropertiesForTest = {
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "Power": 0,  # Different from classic
+        "SwingingWind": 0,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "WaterTank": 0,
+        "Fan": 0,  # Different from classic
+        "WindSpeed": 2,  # Different from classic
+        "Mode": 2,  # Different from classic
+        "SetHumidity": 50,  # Different from classic
+        "CurrentAmbientTemperature": 25,  # Different from classic
+        "CurrentEnvironmentalHumidity": 40,  # Different from classic
+    }
+
+    state_fog = DeyeDeviceState(
+        cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state)
+    )
+
+    # Verify they are initially different
+    assert state_fog != state_classic
+
+    # Make the fog state equal to the classic state by copying all attributes
+    state_fog.anion_switch = state_classic.anion_switch
+    state_fog.water_pump_switch = state_classic.water_pump_switch
+    state_fog.power_switch = state_classic.power_switch
+    state_fog.oscillating_switch = state_classic.oscillating_switch
+    state_fog.child_lock_switch = state_classic.child_lock_switch
+    state_fog.defrosting = state_classic.defrosting
+    state_fog.water_tank_full = state_classic.water_tank_full
+    state_fog.fan_running = state_classic.fan_running
+    state_fog.fan_speed = state_classic.fan_speed
+    state_fog.mode = state_classic.mode
+    state_fog.target_humidity = state_classic.target_humidity
+    state_fog.environment_temperature = state_classic.environment_temperature
+    state_fog.environment_humidity = state_classic.environment_humidity
+
+    # Now they should be equal
+    assert state_fog == state_classic
+    assert state_classic == state_fog
