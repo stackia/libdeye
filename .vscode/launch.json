@@ -8,8 +8,7 @@
       "name": "Python Debugger: Deye CLI",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/src/libdeye/cli.py",
-      "console": "integratedTerminal",
+      "module": "libdeye.cli",
       "args": "${command:pickArgs}",
       "justMyCode": true
     }

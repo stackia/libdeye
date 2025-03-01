@@ -1,5 +1,6 @@
 """MQTT related stuffs"""
 
+import asyncio
 import json
 from abc import ABC, abstractmethod
 from asyncio import Future, get_running_loop
@@ -38,6 +39,7 @@ class BaseDeyeMqttClient(ABC):
             self._mqtt.tls_set()
         self._mqtt.on_connect = self._mqtt_on_connect
         self._mqtt.on_message = self._mqtt_on_message
+        self._mqtt.on_disconnect = self._mqtt_on_disconnect
         self._subscribers: dict[str, set[Callable[[mqtt.MQTTMessage], None]]] = {}
         self._pending_commands: list[tuple[str, bytes]] = []
 
@@ -72,6 +74,19 @@ class BaseDeyeMqttClient(ABC):
             for topic, command in self._pending_commands:
                 self._mqtt.publish(topic, command)
             self._pending_commands.clear()
+
+    def _mqtt_on_disconnect(
+        self,
+        _mqtt: mqtt.Client,
+        _userdata: None,
+        result_code: int,
+    ) -> None:
+        if result_code == 0:  # User initiated disconnect
+            return
+
+        # Update MQTT info and wait for it to complete before reconnecting
+        # (reconnect is automatically handled by paho-mqtt by default)
+        asyncio.run_coroutine_threadsafe(self._set_mqtt_info(), self._loop).result()
 
     @abstractmethod
     def _process_message_payload(self, msg: mqtt.MQTTMessage) -> Any:
