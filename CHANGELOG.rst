@@ -2,6 +2,13 @@
 Changelog
 =========
 
+Version 2.1.0
+=============
+
+- Add equality comparison support for device command and state classes.
+- Enable direct comparison of DeyeDeviceCommand and DeyeDeviceState attributes.
+- Include comprehensive test cases for equality operations.
+
 Version 2.0.1
 =============
 
