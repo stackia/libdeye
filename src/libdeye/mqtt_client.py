@@ -10,10 +10,7 @@ from typing import Any, cast
 
 import paho.mqtt.client as mqtt
 
-from .cloud_api import (
-    DeyeApiResponseFogPlatformDeviceProperties,
-    DeyeCloudApi,
-)
+from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties, DeyeCloudApi
 from .const import QUERY_DEVICE_STATE_COMMAND_CLASSIC
 from .device_command import DeyeDeviceCommand
 from .device_state import DeyeDeviceState
@@ -40,7 +37,7 @@ class BaseDeyeMqttClient(ABC):
         self._mqtt.on_connect = self._mqtt_on_connect
         self._mqtt.on_message = self._mqtt_on_message
         self._mqtt.on_disconnect = self._mqtt_on_disconnect
-        self._subscribers: dict[str, set[Callable[[mqtt.MQTTMessage], None]]] = {}
+        self._subscribers: dict[str, set[Callable[[Any], None]]] = {}
         self._pending_commands: list[tuple[str, bytes]] = []
 
     @abstractmethod
@@ -64,8 +61,8 @@ class BaseDeyeMqttClient(ABC):
         _mqtt: mqtt.Client,
         _userdata: None,
         _flags: dict[str, int],
-        _result_code: int,
-        _properties: mqtt.Properties | None = None,
+        _result_code: Any,
+        _properties: Any,
     ) -> None:
         for topic, callbacks in self._subscribers.items():
             if len(callbacks) > 0:
@@ -110,7 +107,7 @@ class BaseDeyeMqttClient(ABC):
     def _subscribe_topic(
         self,
         topic: str,
-        callback: Callable[[mqtt.MQTTMessage], None],
+        callback: Callable[[Any], None],
     ) -> Callable[[], None]:
         if topic not in self._subscribers:
             self._subscribers[topic] = set()
