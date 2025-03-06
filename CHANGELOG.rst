@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 2.1.1
+=============
+
+- Expand paho-mqtt version constraint to allow minor version updates up to version 3.
+
 Version 2.1.0
 =============
 
