@@ -134,7 +134,7 @@ class TestBaseDeyeMqttClient:
         # Call _mqtt_on_connect
         with patch.object(base_client._mqtt, "subscribe") as mock_subscribe:
             with patch.object(base_client._mqtt, "publish") as mock_publish:
-                base_client._mqtt_on_connect(base_client._mqtt, None, {}, 0)
+                base_client._mqtt_on_connect(base_client._mqtt, None, {}, 0, {})
                 mock_subscribe.assert_called_once_with(topic1)
                 mock_publish.assert_called_once_with(pending_topic, pending_command)
                 assert len(base_client._pending_commands) == 0
@@ -278,7 +278,7 @@ class TestDeyeClassicMqttClient:
         assert classic_client._mqtt_host == "test.mqtt.host"
         assert classic_client._mqtt_ssl_port == 8883
         assert classic_client._endpoint == "test_endpoint"
-        classic_client._mqtt.username_pw_set.assert_called_once_with(
+        cast(MagicMock, classic_client._mqtt).username_pw_set.assert_called_once_with(
             "test_user", "test_password"
         )
 
@@ -458,7 +458,7 @@ class TestDeyeFogMqttClient:
         assert fog_client._mqtt_host == "test.mqtt.host"
         assert fog_client._mqtt_ssl_port == 8883
         assert fog_client._topic == "fogcloud/app/test_user/sub"
-        fog_client._mqtt.username_pw_set.assert_called_once_with(
+        cast(MagicMock, fog_client._mqtt).username_pw_set.assert_called_once_with(
             "test_user", "test_password"
         )
 
