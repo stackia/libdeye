@@ -58,11 +58,7 @@ class BaseDeyeMqttClient(ABC):
 
     def _mqtt_on_connect(
         self,
-        _mqtt: mqtt.Client,
-        _userdata: None,
-        _flags: dict[str, int],
-        _result_code: Any,
-        _properties: Any,
+        *args: Any,
     ) -> None:
         for topic, callbacks in self._subscribers.items():
             if len(callbacks) > 0:
