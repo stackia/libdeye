@@ -215,7 +215,7 @@ Example Usage
     async def main() -> None:
         async with aiohttp.ClientSession() as client:
             # You can authenticate with username/password
-            cloud_api = DeyeCloudApi(client, "18976602834", "jsq2627_tf2")
+            cloud_api = DeyeCloudApi(client, "<phone_number>", "<password>")
             await cloud_api.authenticate()
 
             # Get the list of devices
