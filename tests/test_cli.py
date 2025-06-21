@@ -136,6 +136,7 @@ async def test_list_devices() -> None:
             "online": True,
             "product_name": "Test Product",
             "product_id": "test_product_id",
+            "product_type": "test_product_type",
             "mac": "00:11:22:33:44:55",
             "platform": DeyeIotPlatform.Classic.value,
         }
@@ -151,6 +152,8 @@ async def test_list_devices() -> None:
         assert "test_device_id" in output
         assert "Online" in output
         assert "Test Product" in output
+        assert "test_product_id" in output
+        assert "test_product_type" in output
         assert "00:11:22:33:44:55" in output
         assert "Classic" in output
 
