@@ -58,7 +58,8 @@ Supported devices:
 * DY-8138C
 * DY-8158C
 * DY-8158T
-
+* DY-Y16A3
+* DY-SC60Y
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py>`_.
 

@@ -421,6 +421,36 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
+    "0c44950cc8b811efaf1d0242ac480009": {  # Y16A3
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+            DeyeDeviceMode.AUTO_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.HIGH,
+        ],
+        "oscillating": False,
+        "water_pump": False,
+    },
+    "a83dfb084b4211f08c060242ac480009": {  # SC60Y
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+            DeyeDeviceMode.AUTO_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.HIGH,
+        ],
+        "oscillating": False,
+        "water_pump": False,
+    },
 }
 
 
