@@ -59,7 +59,9 @@ async def list_devices(api: DeyeCloudApi) -> None:
         print(
             f"{i}. {device['device_name']} ({device['device_id']}) - {'Online' if device['online'] else 'Offline'}"
         )
-        print(f"   Product: {device['product_name']} ({device['product_id']})")
+        print(
+            f"   Product: {device['product_name']} ({device['product_id']}) ({device['product_type']})"
+        )
         print(f"   MAC: {device['mac']}")
         print(f"   Platform: {DeyeIotPlatform(device['platform']).name}")
         print()
