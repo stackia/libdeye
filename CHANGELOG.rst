@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Version 2.1.3
+=============
+
+- Add support for Y16A3/SC60Y.
+
 Version 2.1.2
 =============
 
