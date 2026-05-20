@@ -77,6 +77,8 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
             DeyeDeviceMode.AIR_PURIFIER_MODE,
             DeyeDeviceMode.SLEEP_MODE,
         ],
+        "min_target_humidity": 30,
+        "max_target_humidity": 80,
         "fan_speed": [],
         "oscillating": False,
         "water_pump": False,

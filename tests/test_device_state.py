@@ -143,6 +143,16 @@ def test_deye_device_state_parse_fog() -> None:
     assert state.environment_humidity == 55
 
 
+def test_deye_device_state_copy() -> None:
+    """Test copy() returns an independent state."""
+    state = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+    copied = state.copy()
+
+    assert copied == state
+    copied.power_switch = not state.power_switch
+    assert copied.power_switch != state.power_switch
+
+
 def test_deye_device_state_to_command_preserves_values() -> None:
     """Test that to_command() preserves all the values from the state"""
     state = DeyeDeviceState("14118100113B00000000000000000040300000000000")

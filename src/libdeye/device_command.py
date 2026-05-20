@@ -1,11 +1,15 @@
 """Utilities for device command parsing"""
 
 from enum import IntFlag, auto
+from typing import TYPE_CHECKING
 
 from .const import (
     DeyeDeviceMode,
     DeyeFanSpeed,
 )
+
+if TYPE_CHECKING:
+    from .device_state import DeyeDeviceState
 
 
 class DeyeDeviceCommand:
@@ -76,7 +80,7 @@ class DeyeDeviceCommand:
             ]
         )
 
-    def to_json(self) -> object:
+    def to_json(self) -> dict[str, int]:
         """Get JSON representation of this command"""
         return {
             "KeyLock": int(self.child_lock_switch),
@@ -88,6 +92,19 @@ class DeyeDeviceCommand:
             "SwingingWind": int(self.oscillating_switch),
             "WaterPump": int(self.water_pump_switch),
         }
+
+    def to_json_diff(
+        self, baseline: "DeyeDeviceCommand | DeyeDeviceState"
+    ) -> dict[str, int]:
+        """Get JSON with only properties that differ from the baseline."""
+        baseline_command = (
+            baseline
+            if isinstance(baseline, DeyeDeviceCommand)
+            else baseline.to_command()
+        )
+        command_json = self.to_json()
+        baseline_json = baseline_command.to_json()
+        return {k: v for k, v in command_json.items() if baseline_json[k] != v}
 
 
 class DeyeDeviceCommandFlag(IntFlag):

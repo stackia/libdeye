@@ -149,6 +149,56 @@ def test_deye_device_command_to_json_all_off() -> None:
     assert command.to_json() == expected_json
 
 
+def test_deye_device_command_to_json_diff() -> None:
+    """Test to_json_diff() returns only changed properties."""
+    baseline = DeyeDeviceCommand(
+        power_switch=True,
+        fan_speed=DeyeFanSpeed.LOW,
+        target_humidity=50,
+    )
+    command = DeyeDeviceCommand(
+        power_switch=True,
+        fan_speed=DeyeFanSpeed.HIGH,
+        target_humidity=50,
+    )
+
+    assert command.to_json_diff(baseline) == {"WindSpeed": int(DeyeFanSpeed.HIGH)}
+
+
+def test_deye_device_command_to_json_diff_from_state() -> None:
+    """Test to_json_diff() accepts DeyeDeviceState as baseline."""
+    from typing import cast
+
+    from libdeye.cloud_api import DeyeApiResponseFogPlatformDeviceProperties
+    from libdeye.device_state import DeyeDeviceState
+
+    state = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {
+                "Power": 0,
+                "Mode": 0,
+                "WindSpeed": 1,
+                "SetHumidity": 60,
+                "NegativeIon": 0,
+                "WaterPump": 0,
+                "SwingingWind": 0,
+                "KeyLock": 0,
+                "Demisting": 0,
+                "WaterTank": 0,
+                "Fan": 0,
+                "CurrentCoilTemperature": 25,
+                "CurrentExhaustTemperature": 25,
+                "CurrentAmbientTemperature": 25,
+                "CurrentEnvironmentalHumidity": 60,
+            },
+        )
+    )
+    command = DeyeDeviceCommand(power_switch=True)
+
+    assert command.to_json_diff(state) == {"Power": 1}
+
+
 def test_deye_device_command_equality() -> None:
     """Test equality comparison between DeyeDeviceCommand instances"""
     # Test equality with identical instances

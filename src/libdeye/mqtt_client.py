@@ -141,7 +141,11 @@ class BaseDeyeMqttClient(ABC):
 
     @abstractmethod
     async def publish_command(
-        self, product_id: str, device_id: str, command: DeyeDeviceCommand
+        self,
+        product_id: str,
+        device_id: str,
+        command: DeyeDeviceCommand,
+        properties: dict[str, int] | None = None,
     ) -> None:
         """Publish commands to a device"""
         raise NotImplementedError
@@ -196,7 +200,11 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
         )
 
     async def publish_command(
-        self, product_id: str, device_id: str, command: DeyeDeviceCommand | bytes
+        self,
+        product_id: str,
+        device_id: str,
+        command: DeyeDeviceCommand | bytes,
+        properties: dict[str, int] | None = None,
     ) -> None:
         """Publish commands to a device"""
         topic = f"{self._get_topic_prefix(product_id, device_id)}/command/hex"
@@ -286,14 +294,18 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         )
 
     async def publish_command(
-        self, product_id: str, device_id: str, command: DeyeDeviceCommand
+        self,
+        product_id: str,
+        device_id: str,
+        command: DeyeDeviceCommand,
+        properties: dict[str, int] | None = None,
     ) -> None:
         """
         For Fog platform, commands are not published via MQTT.
         Instead, use the cloud API to send commands.
         """
         await self._cloud_api.set_fog_platform_device_properties(
-            device_id, command.to_json()
+            device_id, properties if properties is not None else command.to_json()
         )
 
     async def query_device_state(

@@ -62,7 +62,11 @@ class TestBaseDeyeMqttClient:
             return lambda: None
 
         async def publish_command(
-            self, product_id: str, device_id: str, command: DeyeDeviceCommand
+            self,
+            product_id: str,
+            device_id: str,
+            command: DeyeDeviceCommand,
+            properties: dict[str, int] | None = None,
         ) -> None:
             """Mock implementation of publish_command."""
             pass
@@ -495,17 +499,33 @@ class TestDeyeFogMqttClient:
     @pytest.mark.asyncio
     async def test_publish_command(self, fog_client: DeyeFogMqttClient) -> None:
         """Test publish_command method."""
-        # Setup
         product_id = "product123"
         device_id = "device456"
-        command = MagicMock(spec=DeyeDeviceCommand)
-        command.to_json.return_value = {"Power": 1}
+        command = DeyeDeviceCommand(power_switch=True)
 
-        # Test publish_command
         await fog_client.publish_command(product_id, device_id, command)
         assert cast(
             MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.called
+        ).set_fog_platform_device_properties.call_args[0] == (
+            device_id,
+            command.to_json(),
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_with_properties(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test publish_command can send explicit property updates."""
+        product_id = "product123"
+        device_id = "device456"
+        command = DeyeDeviceCommand(power_switch=True)
+
+        await fog_client.publish_command(
+            product_id,
+            device_id,
+            command,
+            properties={"Power": 1},
+        )
         assert cast(
             MagicMock, fog_client._cloud_api
         ).set_fog_platform_device_properties.call_args[0] == (device_id, {"Power": 1})

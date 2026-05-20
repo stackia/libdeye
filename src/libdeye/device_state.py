@@ -99,6 +99,12 @@ class DeyeDeviceState:
         self._coil_temperature = state.get("CurrentCoilTemperature", 27)
         self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
 
+    def copy(self) -> "DeyeDeviceState":
+        """Return an independent copy of this state."""
+        copied = DeyeDeviceState.__new__(DeyeDeviceState)
+        copied.__dict__.update(self.__dict__)
+        return copied
+
     def to_command(self) -> DeyeDeviceCommand:
         """Convert to a command that can be used to let the device get into this state"""
         return DeyeDeviceCommand(
