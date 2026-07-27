@@ -41,6 +41,7 @@ class DeyeProductConfig(TypedDict):
     anion: bool
     oscillating: bool
     water_pump: bool
+    single_property_fog_commands: bool
 
 
 class DeyeProductPartialConfig(TypedDict, total=False):
@@ -53,6 +54,7 @@ class DeyeProductPartialConfig(TypedDict, total=False):
     anion: bool
     oscillating: bool
     water_pump: bool
+    single_property_fog_commands: bool
 
 
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
@@ -204,6 +206,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         ],
         "oscillating": False,
         "water_pump": False,
+        "single_property_fog_commands": True,
     },
     "2b770cba268611e89d4c00163e0c1b21": {  # V58A3
         "oscillating": False,
@@ -477,6 +480,7 @@ def get_product_feature_config(product_id: str) -> DeyeProductConfig:
         "anion": True,
         "oscillating": True,
         "water_pump": True,
+        "single_property_fog_commands": False,
     }
     try:
         return default | PRODUCT_FEATURE_CONFIG[product_id]

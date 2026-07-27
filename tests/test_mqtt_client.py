@@ -3,7 +3,7 @@
 import asyncio
 import json
 from typing import Any, Callable, cast
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import paho.mqtt.client as mqtt
 import pytest
@@ -529,6 +529,31 @@ class TestDeyeFogMqttClient:
         assert cast(
             MagicMock, fog_client._cloud_api
         ).set_fog_platform_device_properties.call_args[0] == (device_id, {"Power": 1})
+
+    @pytest.mark.asyncio
+    async def test_publish_command_splits_properties_for_u20air(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test U20Air property updates are sent one per API request."""
+        product_id = "363b686a31ee11efb7203b3cd9717242"
+        device_id = "device456"
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=70)
+
+        await fog_client.publish_command(
+            product_id,
+            device_id,
+            command,
+            properties={"SetHumidity": 70, "Power": 1},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_has_awaits(
+            [
+                call(device_id, {"Power": 1}),
+                call(device_id, {"SetHumidity": 70}),
+            ]
+        )
 
     @pytest.mark.asyncio
     async def test_query_device_state(self, fog_client: DeyeFogMqttClient) -> None:
