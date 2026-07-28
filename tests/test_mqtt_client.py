@@ -518,17 +518,43 @@ class TestDeyeFogMqttClient:
         """Test publish_command can send explicit property updates."""
         product_id = "product123"
         device_id = "device456"
-        command = DeyeDeviceCommand(power_switch=True)
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=70)
 
         await fog_client.publish_command(
             product_id,
             device_id,
             command,
-            properties={"Power": 1},
+            properties={"SetHumidity": 70},
         )
-        assert cast(
+        cast(
             MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.call_args[0] == (device_id, {"Power": 1})
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            device_id, {"SetHumidity": 70}
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_includes_power_for_u20a3_partial_updates(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test U20A3 partial updates preserve its current powered-on state."""
+        product_id = "20eae2ea268511e8829100163e0f811e"
+        device_id = "device456"
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=70)
+        properties = {"SetHumidity": 70}
+
+        await fog_client.publish_command(
+            product_id,
+            device_id,
+            command,
+            properties=properties,
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            device_id, {"SetHumidity": 70, "Power": 1}
+        )
+        assert properties == {"SetHumidity": 70}
 
     @pytest.mark.asyncio
     async def test_publish_command_splits_properties_for_u20air(
@@ -553,6 +579,12 @@ class TestDeyeFogMqttClient:
                 call(device_id, {"Power": 1}),
                 call(device_id, {"SetHumidity": 70}),
             ]
+        )
+        assert (
+            cast(
+                MagicMock, fog_client._cloud_api
+            ).set_fog_platform_device_properties.await_count
+            == 2
         )
 
     @pytest.mark.asyncio

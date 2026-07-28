@@ -42,6 +42,7 @@ class DeyeProductConfig(TypedDict):
     oscillating: bool
     water_pump: bool
     single_property_fog_commands: bool
+    requires_power_in_fog_partial_updates: bool
 
 
 class DeyeProductPartialConfig(TypedDict, total=False):
@@ -55,6 +56,7 @@ class DeyeProductPartialConfig(TypedDict, total=False):
     oscillating: bool
     water_pump: bool
     single_property_fog_commands: bool
+    requires_power_in_fog_partial_updates: bool
 
 
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
@@ -193,6 +195,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
     "20eae2ea268511e8829100163e0f811e": {  # U20A3
         "oscillating": False,
         "water_pump": False,
+        "requires_power_in_fog_partial_updates": True,
     },
     "363b686a31ee11efb7203b3cd9717242": {  # U20Air
         "mode": [
@@ -481,6 +484,7 @@ def get_product_feature_config(product_id: str) -> DeyeProductConfig:
         "oscillating": True,
         "water_pump": True,
         "single_property_fog_commands": False,
+        "requires_power_in_fog_partial_updates": False,
     }
     try:
         return default | PRODUCT_FEATURE_CONFIG[product_id]

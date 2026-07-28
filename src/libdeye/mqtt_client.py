@@ -304,10 +304,20 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         For Fog platform, commands are not published via MQTT.
         Instead, use the cloud API to send commands.
         """
+        feature_config = get_product_feature_config(product_id)
         properties_to_publish = (
-            properties if properties is not None else command.to_json()
+            dict(properties) if properties is not None else command.to_json()
         )
-        if get_product_feature_config(product_id)["single_property_fog_commands"]:
+        if (
+            properties is not None
+            and properties_to_publish
+            and feature_config["requires_power_in_fog_partial_updates"]
+            and "Power" not in properties_to_publish
+            and command.power_switch
+        ):
+            properties_to_publish["Power"] = 1
+
+        if feature_config["single_property_fog_commands"]:
             if "Power" in properties_to_publish:
                 await self._cloud_api.set_fog_platform_device_properties(
                     device_id, {"Power": properties_to_publish["Power"]}
