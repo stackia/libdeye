@@ -30,6 +30,7 @@ from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
 from libdeye.device_state import DeyeDeviceState
 from libdeye.mqtt_client import (
     DeyeClassicMqttClient,
+    DeyeFogMqttClient,
 )
 
 
@@ -320,9 +321,49 @@ async def test_set_device_state() -> None:
         assert mock_command.child_lock_switch is False
 
         mock_mqtt_client.publish_command.assert_called_once_with(
-            "test_product_id", "test_device_id", mock_command
+            "test_product_id",
+            "test_device_id",
+            mock_command,
+            properties=None,
         )
         mock_mqtt_client.disconnect.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_set_fog_device_state_publishes_only_changed_properties() -> None:
+    """Test Fog commands publish only properties changed by the CLI invocation."""
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+    mock_api.get_device_list.return_value = [
+        {
+            "device_name": "Test Device",
+            "device_id": "test_device_id",
+            "product_id": "test_product_id",
+            "platform": DeyeIotPlatform.Fog.value,
+        }
+    ]
+
+    mock_mqtt_client = AsyncMock(spec=DeyeFogMqttClient)
+    mock_state = MagicMock(spec=DeyeDeviceState)
+    mock_command = MagicMock()
+    mock_state.to_command.return_value = mock_command
+    mock_command.to_json_diff.return_value = {"SetHumidity": 30}
+    mock_mqtt_client.query_device_state.return_value = mock_state
+
+    with patch("libdeye.cli.DeyeFogMqttClient", return_value=mock_mqtt_client):
+        await set_device_state(
+            mock_api,
+            "test_device_id",
+            target_humidity=30,
+        )
+
+    mock_command.to_json_diff.assert_called_once_with(mock_state)
+    mock_mqtt_client.publish_command.assert_awaited_once_with(
+        "test_product_id",
+        "test_device_id",
+        mock_command,
+        properties={"SetHumidity": 30},
+    )
+    mock_mqtt_client.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio

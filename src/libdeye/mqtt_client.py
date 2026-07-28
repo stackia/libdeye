@@ -11,7 +11,7 @@ from typing import Any, cast
 import paho.mqtt.client as mqtt
 
 from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties, DeyeCloudApi
-from .const import QUERY_DEVICE_STATE_COMMAND_CLASSIC
+from .const import QUERY_DEVICE_STATE_COMMAND_CLASSIC, get_product_feature_config
 from .device_command import DeyeDeviceCommand
 from .device_state import DeyeDeviceState
 
@@ -304,8 +304,24 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         For Fog platform, commands are not published via MQTT.
         Instead, use the cloud API to send commands.
         """
+        properties_to_publish = (
+            properties if properties is not None else command.to_json()
+        )
+        if get_product_feature_config(product_id)["single_property_fog_commands"]:
+            if "Power" in properties_to_publish:
+                await self._cloud_api.set_fog_platform_device_properties(
+                    device_id, {"Power": properties_to_publish["Power"]}
+                )
+            for name, value in properties_to_publish.items():
+                if name == "Power":
+                    continue
+                await self._cloud_api.set_fog_platform_device_properties(
+                    device_id, {name: value}
+                )
+            return
+
         await self._cloud_api.set_fog_platform_device_properties(
-            device_id, properties if properties is not None else command.to_json()
+            device_id, properties_to_publish
         )
 
     async def query_device_state(

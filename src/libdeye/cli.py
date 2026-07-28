@@ -212,8 +212,15 @@ async def set_device_state(
         if child_lock is not None:
             command.child_lock_switch = child_lock
 
-        # Send the command
-        await mqtt_client.publish_command(device_info["product_id"], device_id, command)
+        properties = (
+            command.to_json_diff(state) if platform == DeyeIotPlatform.Fog else None
+        )
+        await mqtt_client.publish_command(
+            device_info["product_id"],
+            device_id,
+            command,
+            properties=properties,
+        )
 
         print(f"Command sent to device {device_info['device_name']} ({device_id})")
 
