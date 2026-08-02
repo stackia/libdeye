@@ -214,6 +214,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
     "2b770cba268611e89d4c00163e0c1b21": {  # V58A3
         "oscillating": False,
         "water_pump": False,
+        "requires_power_in_fog_partial_updates": True,
     },
     "17ab051af38611e89d4c00163e0c1b21": {  # W20A3
         "mode": [
