@@ -43,6 +43,8 @@ class DeyeProductConfig(TypedDict):
     water_pump: bool
     single_property_fog_commands: bool
     requires_power_in_fog_partial_updates: bool
+    requires_mode_in_fog_power_on_updates: bool
+    omit_set_humidity_in_fog_auto_updates: bool
 
 
 class DeyeProductPartialConfig(TypedDict, total=False):
@@ -57,6 +59,8 @@ class DeyeProductPartialConfig(TypedDict, total=False):
     water_pump: bool
     single_property_fog_commands: bool
     requires_power_in_fog_partial_updates: bool
+    requires_mode_in_fog_power_on_updates: bool
+    omit_set_humidity_in_fog_auto_updates: bool
 
 
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
@@ -215,6 +219,8 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
         "requires_power_in_fog_partial_updates": True,
+        "requires_mode_in_fog_power_on_updates": True,
+        "omit_set_humidity_in_fog_auto_updates": True,
     },
     "17ab051af38611e89d4c00163e0c1b21": {  # W20A3
         "mode": [
@@ -486,6 +492,8 @@ def get_product_feature_config(product_id: str) -> DeyeProductConfig:
         "water_pump": True,
         "single_property_fog_commands": False,
         "requires_power_in_fog_partial_updates": False,
+        "requires_mode_in_fog_power_on_updates": False,
+        "omit_set_humidity_in_fog_auto_updates": False,
     }
     try:
         return default | PRODUCT_FEATURE_CONFIG[product_id]
