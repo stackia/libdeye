@@ -11,7 +11,11 @@ from typing import Any, cast
 import paho.mqtt.client as mqtt
 
 from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties, DeyeCloudApi
-from .const import QUERY_DEVICE_STATE_COMMAND_CLASSIC, get_product_feature_config
+from .const import (
+    QUERY_DEVICE_STATE_COMMAND_CLASSIC,
+    DeyeDeviceMode,
+    get_product_feature_config,
+)
 from .device_command import DeyeDeviceCommand
 from .device_state import DeyeDeviceState
 
@@ -308,6 +312,10 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         properties_to_publish = (
             dict(properties) if properties is not None else command.to_json()
         )
+        powering_on = properties_to_publish.get("Power") == 1
+        if powering_on and feature_config["requires_mode_in_fog_power_on_updates"]:
+            properties_to_publish["Mode"] = int(command.mode)
+
         if (
             properties is not None
             and properties_to_publish
@@ -316,6 +324,14 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
             and command.power_switch
         ):
             properties_to_publish["Power"] = 1
+
+        if (
+            feature_config["omit_set_humidity_in_fog_auto_updates"]
+            and command.mode == DeyeDeviceMode.AUTO_MODE
+        ):
+            properties_to_publish.pop("SetHumidity", None)
+            if not properties_to_publish:
+                return
 
         if feature_config["single_property_fog_commands"]:
             if "Power" in properties_to_publish:

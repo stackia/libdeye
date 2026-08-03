@@ -16,7 +16,7 @@ from libdeye.cloud_api import (
     DeyeApiResponseFogPlatformMqttTopics,
     DeyeCloudApi,
 )
-from libdeye.const import QUERY_DEVICE_STATE_COMMAND_CLASSIC
+from libdeye.const import QUERY_DEVICE_STATE_COMMAND_CLASSIC, DeyeDeviceMode
 from libdeye.device_command import DeyeDeviceCommand
 from libdeye.device_state import DeyeDeviceState
 from libdeye.mqtt_client import (
@@ -555,6 +555,135 @@ class TestDeyeFogMqttClient:
             device_id, {"SetHumidity": 70, "Power": 1}
         )
         assert properties == {"SetHumidity": 70}
+
+    @pytest.mark.asyncio
+    async def test_publish_command_reasserts_mode_for_v58a3_power_on(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test V58A3 wakes in auto mode without publishing target humidity."""
+        product_id = "2b770cba268611e89d4c00163e0c1b21"
+        device_id = "device456"
+        command = DeyeDeviceCommand(
+            power_switch=True,
+            mode=DeyeDeviceMode.AUTO_MODE,
+            target_humidity=25,
+        )
+        properties = {"Power": 1, "SetHumidity": 25}
+
+        await fog_client.publish_command(
+            product_id,
+            device_id,
+            command,
+            properties=properties,
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            device_id,
+            {"Power": 1, "Mode": int(DeyeDeviceMode.AUTO_MODE)},
+        )
+        assert properties == {"Power": 1, "SetHumidity": 25}
+
+    @pytest.mark.asyncio
+    async def test_publish_command_preserves_v58a3_power_for_auto_partial_updates(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test V58A3 auto updates preserve power before omitting humidity."""
+        product_id = "2b770cba268611e89d4c00163e0c1b21"
+        device_id = "device456"
+        command = DeyeDeviceCommand(
+            power_switch=True,
+            mode=DeyeDeviceMode.AUTO_MODE,
+            target_humidity=25,
+        )
+
+        await fog_client.publish_command(
+            product_id,
+            device_id,
+            command,
+            properties={"SetHumidity": 25},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            device_id, {"Power": 1}
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_omits_v58a3_auto_humidity_while_powered_off(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test V58A3 does not publish an empty auto humidity update."""
+        product_id = "2b770cba268611e89d4c00163e0c1b21"
+        command = DeyeDeviceCommand(
+            power_switch=False,
+            mode=DeyeDeviceMode.AUTO_MODE,
+            target_humidity=25,
+        )
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            properties={"SetHumidity": 25},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_publish_command_preserves_v58a3_power_for_manual_updates(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test V58A3 manual updates include the current powered-on state."""
+        product_id = "2b770cba268611e89d4c00163e0c1b21"
+        command = DeyeDeviceCommand(
+            power_switch=True,
+            mode=DeyeDeviceMode.MANUAL_MODE,
+            target_humidity=70,
+        )
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            properties={"SetHumidity": 70},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            "device456", {"SetHumidity": 70, "Power": 1}
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_does_not_apply_v58a3_quirks_to_other_products(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Test generic Fog products keep their power-on auto properties unchanged."""
+        product_id = "product123"
+        device_id = "device456"
+        command = DeyeDeviceCommand(
+            power_switch=True,
+            mode=DeyeDeviceMode.AUTO_MODE,
+            target_humidity=25,
+        )
+
+        await fog_client.publish_command(
+            product_id,
+            device_id,
+            command,
+            properties={"Power": 1, "SetHumidity": 25},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            device_id, {"Power": 1, "SetHumidity": 25}
+        )
 
     @pytest.mark.asyncio
     async def test_publish_command_splits_properties_for_u20air(
