@@ -2,9 +2,11 @@
 
 import asyncio
 import json
+import logging
 from abc import ABC, abstractmethod
 from asyncio import Future, get_running_loop
 from collections.abc import Callable
+from concurrent.futures import Future as ConcurrentFuture
 from ssl import SSLContext
 from typing import Any, cast
 
@@ -18,6 +20,10 @@ from .const import (
 )
 from .device_command import DeyeDeviceCommand
 from .device_state import DeyeDeviceState
+
+_LOGGER = logging.getLogger(__name__)
+
+MQTT_INFO_REFRESH_TIMEOUT = 15
 
 
 class BaseDeyeMqttClient(ABC):
@@ -43,6 +49,7 @@ class BaseDeyeMqttClient(ABC):
         self._mqtt.on_disconnect = self._mqtt_on_disconnect
         self._subscribers: dict[str, set[Callable[[Any], None]]] = {}
         self._pending_commands: list[tuple[str, bytes]] = []
+        self._mqtt_info_refresh_future: ConcurrentFuture[None] | None = None
 
     @abstractmethod
     async def _set_mqtt_info(self) -> None:
@@ -57,6 +64,11 @@ class BaseDeyeMqttClient(ABC):
 
     def disconnect(self) -> None:
         """Disconnect the MQTT client to the server."""
+        if (
+            self._mqtt_info_refresh_future is not None
+            and not self._mqtt_info_refresh_future.done()
+        ):
+            self._mqtt_info_refresh_future.cancel()
         self._mqtt.disconnect()
         self._mqtt.loop_stop()
 
@@ -81,9 +93,49 @@ class BaseDeyeMqttClient(ABC):
         if result_code == 0:  # User initiated disconnect
             return
 
-        # Update MQTT info and wait for it to complete before reconnecting
-        # (reconnect is automatically handled by paho-mqtt by default)
-        asyncio.run_coroutine_threadsafe(self._set_mqtt_info(), self._loop).result()
+        _LOGGER.warning(
+            "Deye MQTT disconnected unexpectedly, result_code=%s", result_code
+        )
+
+        # This callback runs on Paho's network thread. Do not block it while a cloud
+        # request refreshes the MQTT credentials, and never let a cloud/DNS failure
+        # escape the callback and terminate that thread.
+        if (
+            self._mqtt_info_refresh_future is not None
+            and not self._mqtt_info_refresh_future.done()
+        ):
+            return
+
+        refresh_coro = self._refresh_mqtt_info_after_disconnect(result_code)
+        try:
+            self._mqtt_info_refresh_future = asyncio.run_coroutine_threadsafe(
+                refresh_coro, self._loop
+            )
+        except Exception:
+            refresh_coro.close()
+            _LOGGER.exception(
+                "Failed to schedule a Deye MQTT information refresh after disconnect"
+            )
+
+    async def _refresh_mqtt_info_after_disconnect(self, result_code: int) -> None:
+        """Refresh MQTT credentials without risking the Paho network thread."""
+        try:
+            await asyncio.wait_for(
+                self._set_mqtt_info(), timeout=MQTT_INFO_REFRESH_TIMEOUT
+            )
+        except TimeoutError:
+            _LOGGER.error(
+                "Timed out after %ss while refreshing Deye MQTT information "
+                "following disconnect (result_code=%s)",
+                MQTT_INFO_REFRESH_TIMEOUT,
+                result_code,
+            )
+        except Exception:
+            _LOGGER.exception(
+                "Failed to refresh Deye MQTT information following disconnect "
+                "(result_code=%s)",
+                result_code,
+            )
 
     @abstractmethod
     def _process_message_payload(self, msg: mqtt.MQTTMessage) -> Any:

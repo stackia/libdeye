@@ -20,6 +20,7 @@ from libdeye.const import QUERY_DEVICE_STATE_COMMAND_CLASSIC, DeyeDeviceMode
 from libdeye.device_command import DeyeDeviceCommand
 from libdeye.device_state import DeyeDeviceState
 from libdeye.mqtt_client import (
+    MQTT_INFO_REFRESH_TIMEOUT,
     BaseDeyeMqttClient,
     DeyeClassicMqttClient,
     DeyeFogMqttClient,
@@ -155,9 +156,60 @@ class TestBaseDeyeMqttClient:
         self, base_client: MockBaseDeyeMqttClient
     ) -> None:
         """Test _mqtt_on_disconnect method with unexpected disconnect."""
-        with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
+        refresh_future = MagicMock()
+        with patch(
+            "asyncio.run_coroutine_threadsafe", return_value=refresh_future
+        ) as mock_run_coroutine_threadsafe:
             base_client._mqtt_on_disconnect(base_client._mqtt, None, 1)
             mock_run_coroutine_threadsafe.assert_called_once()
+            refresh_future.result.assert_not_called()
+
+            scheduled_coro = mock_run_coroutine_threadsafe.call_args.args[0]
+            scheduled_coro.close()
+
+    def test_mqtt_on_disconnect_does_not_schedule_duplicate_refresh(
+        self, base_client: MockBaseDeyeMqttClient
+    ) -> None:
+        """Test repeated disconnect callbacks share an in-flight refresh."""
+        refresh_future = MagicMock()
+        refresh_future.done.return_value = False
+        base_client._mqtt_info_refresh_future = refresh_future
+
+        with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
+            base_client._mqtt_on_disconnect(base_client._mqtt, None, 1)
+
+        mock_run_coroutine_threadsafe.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_mqtt_info_refresh_failure_is_caught(
+        self, base_client: MockBaseDeyeMqttClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test a cloud failure cannot escape into Paho's network thread."""
+        with patch.object(
+            base_client,
+            "_set_mqtt_info",
+            AsyncMock(side_effect=RuntimeError("cloud unavailable")),
+        ):
+            await base_client._refresh_mqtt_info_after_disconnect(1)
+
+        assert "Failed to refresh Deye MQTT information" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_mqtt_info_refresh_timeout_is_caught(
+        self, base_client: MockBaseDeyeMqttClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test a slow cloud refresh times out without raising."""
+        with patch(
+            "libdeye.mqtt_client.asyncio.wait_for",
+            AsyncMock(side_effect=TimeoutError),
+        ) as mock_wait_for:
+            await base_client._refresh_mqtt_info_after_disconnect(1)
+
+        assert mock_wait_for.call_args.kwargs["timeout"] == MQTT_INFO_REFRESH_TIMEOUT
+        assert "Timed out after 15s" in caplog.text
+
+        refresh_coro = mock_wait_for.call_args.args[0]
+        refresh_coro.close()
 
     def test_mqtt_on_message(self, base_client: MockBaseDeyeMqttClient) -> None:
         """Test _mqtt_on_message method."""
