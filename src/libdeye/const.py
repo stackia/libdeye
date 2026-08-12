@@ -29,6 +29,7 @@ class DeyeFanSpeed(IntEnum):
     MIDDLE = 2
     HIGH = 3
     FULL = 4
+    UNKNOWN_SPEED = 5
 
 
 class DeyeProductConfig(TypedDict):
@@ -64,6 +65,26 @@ class DeyeProductPartialConfig(TypedDict, total=False):
 
 
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
+    "d71936c6951c11f0a8200242ac480009": {  # DYD-P40
+        "mode": [
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+            DeyeDeviceMode.AUTO_MODE,
+            DeyeDeviceMode.UNKNOWN_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+            DeyeFanSpeed.UNKNOWN_SPEED,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": True,
+        "oscillating": True,
+        "water_pump": False,
+    },
     "07dddba41c3011e8829100163e0f811e": {  # 612S
         "mode": [],
         "fan_speed": [DeyeFanSpeed.LOW, DeyeFanSpeed.HIGH],
