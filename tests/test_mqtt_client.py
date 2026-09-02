@@ -154,7 +154,11 @@ class TestBaseDeyeMqttClient:
         with patch.object(base_client._mqtt, "subscribe") as mock_subscribe:
             with patch.object(base_client._mqtt, "publish") as mock_publish:
                 base_client._mqtt_on_connect(
-                    base_client._mqtt, None, mqtt.ConnectFlags(), 0, None
+                    base_client._mqtt,
+                    None,
+                    mqtt.ConnectFlags(False),
+                    mqtt.ReasonCode(mqtt.PacketTypes.CONNACK),
+                    None,
                 )
                 mock_subscribe.assert_called_once_with(topic1)
                 mock_publish.assert_called_once_with(pending_topic, pending_command)
@@ -166,7 +170,11 @@ class TestBaseDeyeMqttClient:
         """Test _mqtt_on_disconnect method with user initiated disconnect."""
         with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
             base_client._mqtt_on_disconnect(
-                base_client._mqtt, None, mqtt.DisconnectFlags(), 0, None
+                base_client._mqtt,
+                None,
+                mqtt.DisconnectFlags(False),
+                mqtt.ReasonCode(mqtt.PacketTypes.DISCONNECT),
+                None,
             )
             mock_run_coroutine_threadsafe.assert_not_called()
 
@@ -176,7 +184,11 @@ class TestBaseDeyeMqttClient:
         """Test _mqtt_on_disconnect method with unexpected disconnect."""
         with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
             base_client._mqtt_on_disconnect(
-                base_client._mqtt, None, mqtt.DisconnectFlags(), 1, None
+                base_client._mqtt,
+                None,
+                mqtt.DisconnectFlags(False),
+                mqtt.ReasonCode(mqtt.PacketTypes.DISCONNECT, "Unspecified error"),
+                None,
             )
             mock_run_coroutine_threadsafe.assert_called_once()
 
