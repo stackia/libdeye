@@ -68,6 +68,9 @@ packages = ["src/libdeye"]
 [tool.uv]
 default-groups = ["dev"]
 
+[tool.black]
+target-version = ["py310"]
+
 [tool.isort]
 profile = "black"
 
