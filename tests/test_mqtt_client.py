@@ -153,7 +153,13 @@ class TestBaseDeyeMqttClient:
         # Call _mqtt_on_connect
         with patch.object(base_client._mqtt, "subscribe") as mock_subscribe:
             with patch.object(base_client._mqtt, "publish") as mock_publish:
-                base_client._mqtt_on_connect(base_client._mqtt, None, {}, 0, {})
+                base_client._mqtt_on_connect(
+                    base_client._mqtt,
+                    None,
+                    mqtt.ConnectFlags(False),
+                    mqtt.ReasonCode(mqtt.PacketTypes.CONNACK),
+                    None,
+                )
                 mock_subscribe.assert_called_once_with(topic1)
                 mock_publish.assert_called_once_with(pending_topic, pending_command)
                 assert len(base_client._pending_commands) == 0
@@ -163,7 +169,13 @@ class TestBaseDeyeMqttClient:
     ) -> None:
         """Test _mqtt_on_disconnect method with user initiated disconnect."""
         with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
-            base_client._mqtt_on_disconnect(base_client._mqtt, None, 0)
+            base_client._mqtt_on_disconnect(
+                base_client._mqtt,
+                None,
+                mqtt.DisconnectFlags(False),
+                mqtt.ReasonCode(mqtt.PacketTypes.DISCONNECT),
+                None,
+            )
             mock_run_coroutine_threadsafe.assert_not_called()
 
     def test_mqtt_on_disconnect_unexpected(
@@ -171,7 +183,13 @@ class TestBaseDeyeMqttClient:
     ) -> None:
         """Test _mqtt_on_disconnect method with unexpected disconnect."""
         with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
-            base_client._mqtt_on_disconnect(base_client._mqtt, None, 1)
+            base_client._mqtt_on_disconnect(
+                base_client._mqtt,
+                None,
+                mqtt.DisconnectFlags(False),
+                mqtt.ReasonCode(mqtt.PacketTypes.DISCONNECT, "Unspecified error"),
+                None,
+            )
             mock_run_coroutine_threadsafe.assert_called_once()
 
     def test_mqtt_on_message(self, base_client: MockBaseDeyeMqttClient) -> None:
