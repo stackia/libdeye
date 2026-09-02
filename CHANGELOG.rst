@@ -2,6 +2,20 @@
 Changelog
 =========
 
+Unreleased
+==========
+
+- Align Fog ``ProtocolVersion == 0`` payloads with official
+  ``FogDeviceManager`` per-command companion keys instead of posting a
+  union of every cached property (for example power commands no longer
+  include ``SwingingWind``).
+- Add ``?random=`` cache-busting query params on Fog GET properties and
+  Fog MQTT-info, matching official Retrofit / ``DeYeHttpRequestManager``.
+- ``DeyeDevice.request_refresh()`` on Fog POSTs official ``RealData: 1``
+  (``setPollFogProperties``) instead of blocking on GET.
+- Expose Fog extras on ``DeyeDeviceCommand`` / ``DeyeDeviceState``: sleep,
+  UV, set temperature, prompt sound, screen display, and timed-off hour.
+
 Version 3.0.0
 =============
 

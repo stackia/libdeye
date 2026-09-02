@@ -338,6 +338,12 @@ def test_print_device_state() -> None:
     mock_state.child_lock_switch = False
     mock_state.water_tank_full = False
     mock_state.defrosting = False
+    mock_state.sleep_switch = None
+    mock_state.uv_switch = None
+    mock_state.target_temperature = None
+    mock_state.prompt_sound = None
+    mock_state.screen_display = None
+    mock_state.timed_off_hour = None
 
     with patch("sys.stdout") as mock_stdout:
         print_device_state(mock_state)
@@ -579,6 +585,12 @@ async def test_run_cli_set_command() -> None:
     mock_args.water_pump = "off"
     mock_args.oscillating = "on"
     mock_args.child_lock = "off"
+    mock_args.sleep = None
+    mock_args.uv = None
+    mock_args.target_temperature = None
+    mock_args.prompt_sound = None
+    mock_args.screen_display = None
+    mock_args.timed_off_hour = None
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
@@ -600,6 +612,12 @@ async def test_run_cli_set_command() -> None:
             water_pump=False,
             oscillating=True,
             child_lock=False,
+            sleep=None,
+            uv=None,
+            target_temperature=None,
+            prompt_sound=None,
+            screen_display=None,
+            timed_off_hour=None,
         )
 
 

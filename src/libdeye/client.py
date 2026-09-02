@@ -158,14 +158,18 @@ class DeyeDevice:
         return state
 
     async def request_refresh(self) -> DeyeDeviceState | None:
-        """Trigger a state refresh without blocking Classic/Combo MQTT.
+        """Trigger a state refresh without waiting for the new payload.
 
-        Fog still performs HTTP GET and returns the new state. Classic and
-        Combo publish ``00 01``; the next MQTT ``status/hex`` updates state.
+        Fog POSTs official ``RealData: 1`` (``setPollFogProperties``). Classic
+        and Combo publish ``00 01``. The next MQTT state message updates
+        ``reported_state``. Use ``refresh()`` when a blocking GET is needed.
         """
         mqtt = await self.ensure_connected()
         if self.transport is DeyeDeviceTransport.FOG:
-            return await self.refresh()
+            await self.client.cloud_api.poll_fog_platform_device_properties(
+                self.device_id
+            )
+            return None
         if not isinstance(mqtt, DeyeClassicMqttClient):
             raise TypeError("Classic/Combo query requires Classic MQTT")
         await mqtt.publish_command(

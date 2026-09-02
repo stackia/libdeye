@@ -2,8 +2,9 @@
 
 from collections.abc import Callable
 from enum import IntEnum
+import random
 import time
-from typing import Any, TypedDict, cast
+from typing import Any, NotRequired, TypedDict, cast
 
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ClientError
@@ -139,6 +140,12 @@ class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
     WaterTank: int
     WindSpeed: int
     fault: dict[str, int]
+    Sleep: NotRequired[int]
+    UV: NotRequired[int]
+    SetTemperature: NotRequired[int]
+    PromptSound: NotRequired[int]
+    Screendisplay: NotRequired[int]
+    TimedOffHour: NotRequired[int]
 
 
 class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
@@ -152,6 +159,12 @@ class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
     NegativeIon: int
     SwingingWind: int
     WaterPump: int
+    Sleep: NotRequired[int]
+    UV: NotRequired[int]
+    SetTemperature: NotRequired[int]
+    PromptSound: NotRequired[int]
+    Screendisplay: NotRequired[int]
+    TimedOffHour: NotRequired[int]
 
 
 class DeyeApiResponseDeviceInfo(TypedDict):
@@ -392,7 +405,11 @@ class DeyeCloudApi:
 
     async def get_fog_platform_mqtt_info(self) -> DeyeApiResponseFogPlatformMqttInfo:
         """Get MQTT server info / credentials for current user (Fog platform)."""
-        result = await self._make_authenticated_request("get", "fogmqttinfo/")
+        result = await self._make_authenticated_request(
+            "get",
+            "fogmqttinfo/",
+            params={"random": str(random.random())},
+        )
         return cast(DeyeApiResponseFogPlatformMqttInfo, result["data"])
 
     async def get_fog_platform_device_properties(
@@ -400,14 +417,24 @@ class DeyeCloudApi:
     ) -> DeyeApiResponseFogPlatformDeviceProperties:
         """Get properties for a device on the Fog platform."""
         result = await self._make_authenticated_request(
-            "get", f"get/properties/?device_id={device_id}"
+            "get",
+            "get/properties/",
+            params={
+                "device_id": device_id,
+                "random": str(random.random()),
+            },
         )
         return cast(
             DeyeApiResponseFogPlatformDeviceProperties, result["data"]["properties"]
         )
 
     async def poll_fog_platform_device_properties(self, device_id: str) -> None:
-        """Poll properties for a device on the Fog platform."""
+        """Ask a Fog device to publish fresh RealData.
+
+        Official ``DeYeHttpRequestManager.setPollFogProperties`` POSTs
+        ``{RealData: 1}``. The App repeats this every 3s while a Fog
+        control panel is open; MQTT then delivers ``thing_property``.
+        """
         await self._make_authenticated_request(
             "post",
             "set/properties/",

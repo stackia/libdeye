@@ -204,7 +204,7 @@ Available Commands
 - ``devices``: List devices on the account, including IoT platform and command transport (``CLASSIC``, ``FOG``, or ``COMBO``)
 - ``products``: List all available product types
 - ``get``: Query current state via ``DeyeClient`` (Classic MQTT poll, Fog HTTP GET, or Combo MQTT poll)
-- ``set``: Send a command via ``DeyeClient.apply`` (power, mode, fan speed, humidity, anion, water pump, oscillating, child lock)
+- ``set``: Send a command via ``DeyeClient.apply`` (power, mode, fan speed, humidity, anion, water pump, oscillating, child lock, plus optional Fog sleep / UV / temperature / prompt sound / screen display / timed-off hour)
 - ``monitor``: Subscribe to MQTT state and availability updates
 - ``print-token``: Print the authentication token for use in .env file
 - ``refresh-token``: Force refresh the authentication token
@@ -231,8 +231,15 @@ platform MQTT clients yourself.
 
 Call ``refresh()`` or ``ensure_connected()`` before ``subscribe()``.
 Send commands with ``device.apply(command, baseline=...)``. Fog devices
-with cached ``ProtocolVersion == 0`` send a full property snapshot;
-otherwise only changed fields are posted.
+with cached ``ProtocolVersion == 0`` send the official companion snapshot
+for each changed property (not a union of every cached key); otherwise
+only changed fields are posted.
+
+``DeyeDeviceCommand`` also carries optional Fog controls that the official
+app exposes on some products: ``sleep_switch``, ``uv_switch``,
+``target_temperature``, ``prompt_sound``, ``screen_display``, and
+``timed_off_hour``. These default to ``None`` and are omitted from Fog
+JSON until set. Home Assistant does not need to expose them.
 
 .. code-block:: python
 

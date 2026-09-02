@@ -126,14 +126,13 @@ async def test_combo_flags_on_classic_use_combo_transport() -> None:
 
 
 @pytest.mark.asyncio
-async def test_request_refresh_fog_uses_http_get() -> None:
-    """Fog request_refresh performs HTTP GET via query_device_state."""
+async def test_request_refresh_fog_posts_real_data_poll() -> None:
+    """Fog request_refresh POSTs official RealData=1 and does not wait."""
     cloud_api = MagicMock(spec=DeyeCloudApi)
+    cloud_api.poll_fog_platform_device_properties = AsyncMock()
     client = DeyeClient(cloud_api)
     device = DeyeDevice(client, _info(DeyeIotPlatform.Fog))
-    state = DeyeDeviceState("14118100113B00000000000000000040300000000000")
     mqtt = MagicMock(spec=DeyeFogMqttClient)
-    mqtt.query_device_state = AsyncMock(return_value=state)
     mqtt.connect = AsyncMock()
 
     with patch(
@@ -142,8 +141,11 @@ async def test_request_refresh_fog_uses_http_get() -> None:
     ):
         result = await device.request_refresh()
 
-    assert result == state
-    mqtt.query_device_state.assert_awaited_once()
+    assert result is None
+    mqtt.query_device_state.assert_not_called()
+    cloud_api.poll_fog_platform_device_properties.assert_awaited_once_with(
+        device.device_id
+    )
 
 
 @pytest.mark.asyncio
