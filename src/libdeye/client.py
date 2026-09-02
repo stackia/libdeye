@@ -167,7 +167,7 @@ class DeyeDevice:
         if self.transport is DeyeDeviceTransport.FOG:
             return await self.refresh()
         if not isinstance(mqtt, DeyeClassicMqttClient):
-            raise RuntimeError("Classic/Combo query requires Classic MQTT")
+            raise TypeError("Classic/Combo query requires Classic MQTT")
         await mqtt.publish_command(
             self.product_id,
             self.device_id,
