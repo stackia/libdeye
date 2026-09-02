@@ -58,6 +58,9 @@ Supported devices:
 * DY-Y16A3
 * DY-SC60Y
 * DYD-P40
+* A10
+* DYD-P30
+* DY-C65DZ/A
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py>`_.
 
@@ -235,11 +238,14 @@ with cached ``ProtocolVersion == 0`` send the official companion snapshot
 for each changed property (not a union of every cached key); otherwise
 only changed fields are posted.
 
-``DeyeDeviceCommand`` also carries optional Fog controls that the official
-app exposes on some products: ``sleep_switch``, ``uv_switch``,
-``target_temperature``, ``prompt_sound``, ``screen_display``, and
-``timed_off_hour``. These default to ``None`` and are omitted from Fog
-JSON until set. Home Assistant does not need to expose them.
+``DeyeDeviceCommand`` also carries optional Fog controls that official
+dehumidifier product JSON exposes on some models: ``uv_switch``,
+``prompt_sound``, ``screen_display``, and ``timed_off_hour``. These default
+to ``None`` and are omitted from Fog JSON until set. Use
+``get_product_feature_config`` (``uv``, ``prompt_sound``, ``screen_display``,
+``timed_off``) to see whether a product advertises them. Sleep is
+``DeyeDeviceMode.SLEEP_MODE``. Home Assistant does not need to expose the
+optional Fog controls.
 
 .. code-block:: python
 

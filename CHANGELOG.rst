@@ -13,8 +13,12 @@ Unreleased
   Fog MQTT-info, matching official Retrofit / ``DeYeHttpRequestManager``.
 - ``DeyeDevice.request_refresh()`` on Fog POSTs official ``RealData: 1``
   (``setPollFogProperties``) instead of blocking on GET.
-- Expose Fog extras on ``DeyeDeviceCommand`` / ``DeyeDeviceState``: sleep,
-  UV, set temperature, prompt sound, screen display, and timed-off hour.
+- Expose Fog extras on ``DeyeDeviceCommand`` / ``DeyeDeviceState``: UV,
+  prompt sound, screen display, and timed-off hour. Sleep is
+  ``DeyeDeviceMode.SLEEP_MODE``; target temperature is not supported.
+- Map official dehumidifier JSON ``uvLight``, ``tone``, ``displayScreen``,
+  and ``hasDelayer`` onto product config ``uv``, ``prompt_sound``,
+  ``screen_display``, and ``timed_off``.
 
 Version 3.0.0
 =============

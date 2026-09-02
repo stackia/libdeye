@@ -23,18 +23,16 @@ class DeyeDeviceCommand:
         mode: DeyeDeviceMode = DeyeDeviceMode.MANUAL_MODE,
         target_humidity: int = 60,
         *,
-        sleep_switch: bool | None = None,
         uv_switch: bool | None = None,
-        target_temperature: int | None = None,
         prompt_sound: bool | None = None,
         screen_display: bool | None = None,
         timed_off_hour: int | None = None,
     ) -> None:
         """Initialize the command with the desired device settings.
 
-        Extra Fog keys (sleep, UV, set temperature, prompt sound, screen
-        display, timed-off hour) default to ``None`` and are omitted from
-        JSON until a caller or Fog state sets them.
+        Extra Fog keys (UV, prompt sound, screen display, timed-off hour)
+        default to ``None`` and are omitted from JSON until a caller or Fog
+        state sets them. Sleep is ``DeyeDeviceMode.SLEEP_MODE``.
         """
         self.anion_switch = anion_switch
         self.water_pump_switch = water_pump_switch
@@ -44,9 +42,7 @@ class DeyeDeviceCommand:
         self.fan_speed = fan_speed
         self.mode = mode
         self.target_humidity = target_humidity
-        self.sleep_switch = sleep_switch
         self.uv_switch = uv_switch
-        self.target_temperature = target_temperature
         self.prompt_sound = prompt_sound
         self.screen_display = screen_display
         self.timed_off_hour = timed_off_hour
@@ -66,9 +62,7 @@ class DeyeDeviceCommand:
             and self.fan_speed == other.fan_speed
             and self.mode == other.mode
             and self.target_humidity == other.target_humidity
-            and self.sleep_switch == other.sleep_switch
             and self.uv_switch == other.uv_switch
-            and self.target_temperature == other.target_temperature
             and self.prompt_sound == other.prompt_sound
             and self.screen_display == other.screen_display
             and self.timed_off_hour == other.timed_off_hour
@@ -117,12 +111,8 @@ class DeyeDeviceCommand:
             "SwingingWind": int(self.oscillating_switch),
             "WaterPump": int(self.water_pump_switch),
         }
-        if self.sleep_switch is not None:
-            payload["Sleep"] = int(self.sleep_switch)
         if self.uv_switch is not None:
             payload["UV"] = int(self.uv_switch)
-        if self.target_temperature is not None:
-            payload["SetTemperature"] = self.target_temperature
         if self.prompt_sound is not None:
             payload["PromptSound"] = int(self.prompt_sound)
         if self.screen_display is not None:
@@ -175,7 +165,6 @@ FOG_COMBO_PROPERTY_COMMANDS: dict[str, DeyeFogComboCommand] = {
     "Mode": DeyeFogComboCommand.MODE,
     "WindSpeed": DeyeFogComboCommand.FAN_SPEED,
     "SetHumidity": DeyeFogComboCommand.HUMIDITY_OR_TEMP,
-    "SetTemperature": DeyeFogComboCommand.HUMIDITY_OR_TEMP,
     "Sleep": DeyeFogComboCommand.SLEEP,
 }
 

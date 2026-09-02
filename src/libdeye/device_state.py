@@ -52,9 +52,7 @@ class DeyeDeviceState:
         self.target_humidity: int = 60
         self.environment_temperature: int = 27
         self.environment_humidity: int = 27
-        self.sleep_switch: bool | None = None
         self.uv_switch: bool | None = None
-        self.target_temperature: int | None = None
         self.prompt_sound: bool | None = None
         self.screen_display: bool | None = None
         self.timed_off_hour: int | None = None
@@ -130,9 +128,7 @@ class DeyeDeviceState:
         # Unused attributes
         self._coil_temperature = state.get("CurrentCoilTemperature", 27)
         self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
-        self.sleep_switch = _optional_flag(state.get("Sleep"))
         self.uv_switch = _optional_flag(state.get("UV"))
-        self.target_temperature = _optional_int(state.get("SetTemperature"))
         self.prompt_sound = _optional_flag(state.get("PromptSound"))
         self.screen_display = _optional_flag(state.get("Screendisplay"))
         timed_off = state.get("TimedOffHour", state.get("TimedShutdownHourSetting"))
@@ -155,9 +151,7 @@ class DeyeDeviceState:
             self.fan_speed,
             self.mode,
             self.target_humidity,
-            sleep_switch=self.sleep_switch,
             uv_switch=self.uv_switch,
-            target_temperature=self.target_temperature,
             prompt_sound=self.prompt_sound,
             screen_display=self.screen_display,
             timed_off_hour=self.timed_off_hour,
@@ -186,9 +180,7 @@ class DeyeDeviceState:
             and self.target_humidity == other.target_humidity
             and self.environment_temperature == other.environment_temperature
             and self.environment_humidity == other.environment_humidity
-            and self.sleep_switch == other.sleep_switch
             and self.uv_switch == other.uv_switch
-            and self.target_temperature == other.target_temperature
             and self.prompt_sound == other.prompt_sound
             and self.screen_display == other.screen_display
             and self.timed_off_hour == other.timed_off_hour

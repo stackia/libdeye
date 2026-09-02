@@ -128,12 +128,8 @@ def print_device_state(state: DeyeDeviceState) -> None:
     print(f"  Child Lock: {'On' if state.child_lock_switch else 'Off'}")
     print(f"  Water Tank Full: {'Yes' if state.water_tank_full else 'No'}")
     print(f"  Defrosting: {'Yes' if state.defrosting else 'No'}")
-    if isinstance(state.sleep_switch, bool):
-        print(f"  Sleep: {'On' if state.sleep_switch else 'Off'}")
     if isinstance(state.uv_switch, bool):
         print(f"  UV: {'On' if state.uv_switch else 'Off'}")
-    if isinstance(state.target_temperature, int):
-        print(f"  Target Temperature: {state.target_temperature}°C")
     if isinstance(state.prompt_sound, bool):
         print(f"  Prompt Sound: {'On' if state.prompt_sound else 'Off'}")
     if isinstance(state.screen_display, bool):
@@ -172,9 +168,7 @@ async def set_device_state(
     water_pump: bool | None = None,
     oscillating: bool | None = None,
     child_lock: bool | None = None,
-    sleep: bool | None = None,
     uv: bool | None = None,
-    target_temperature: int | None = None,
     prompt_sound: bool | None = None,
     screen_display: bool | None = None,
     timed_off_hour: int | None = None,
@@ -207,12 +201,8 @@ async def set_device_state(
             command.oscillating_switch = oscillating
         if child_lock is not None:
             command.child_lock_switch = child_lock
-        if sleep is not None:
-            command.sleep_switch = sleep
         if uv is not None:
             command.uv_switch = uv
-        if target_temperature is not None:
-            command.target_temperature = target_temperature
         if prompt_sound is not None:
             command.prompt_sound = prompt_sound
         if screen_display is not None:
@@ -358,10 +348,6 @@ async def run_cli(
             if args.child_lock:
                 child_lock = args.child_lock == "on"
 
-            sleep = None
-            if args.sleep:
-                sleep = args.sleep == "on"
-
             uv = None
             if args.uv:
                 uv = args.uv == "on"
@@ -385,9 +371,7 @@ async def run_cli(
                 water_pump=water_pump,
                 oscillating=oscillating,
                 child_lock=child_lock,
-                sleep=sleep,
                 uv=uv,
-                target_temperature=args.target_temperature,
                 prompt_sound=prompt_sound,
                 screen_display=screen_display,
                 timed_off_hour=args.timed_off_hour,
@@ -466,13 +450,7 @@ def main() -> None:
     set_parser.add_argument(
         "--child-lock", choices=["on", "off"], help="Child lock state"
     )
-    set_parser.add_argument("--sleep", choices=["on", "off"], help="Sleep switch")
     set_parser.add_argument("--uv", choices=["on", "off"], help="UV light switch")
-    set_parser.add_argument(
-        "--target-temperature",
-        type=int,
-        help="Target temperature in Celsius (Fog / Combo)",
-    )
     set_parser.add_argument(
         "--prompt-sound", choices=["on", "off"], help="Prompt sound (Fog HTTP)"
     )
