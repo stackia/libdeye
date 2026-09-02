@@ -238,14 +238,23 @@ with cached ``ProtocolVersion == 0`` send the official companion snapshot
 for each changed property (not a union of every cached key); otherwise
 only changed fields are posted.
 
-``DeyeDeviceCommand`` also carries optional Fog controls that official
-dehumidifier product JSON exposes on some models: ``uv_switch``,
-``prompt_sound``, ``screen_display``, and ``timed_off_hour``. These default
-to ``None`` and are omitted from Fog JSON until set. Use
-``get_product_feature_config`` (``uv``, ``prompt_sound``, ``screen_display``,
-``timed_off``) to see whether a product advertises them. Sleep is
-``DeyeDeviceMode.SLEEP_MODE``. Home Assistant does not need to expose the
-optional Fog controls.
+``DeyeDeviceCommand`` also carries Fog extras that official dehumidifier
+product JSON optionally defines: ``uv_switch``, ``prompt_sound``,
+``screen_display``, and ``timed_off_hour``.
+
+The product JSON (``uvLight``, ``tone``, ``displayScreen``,
+``hasDelayer``) only shows or hides those controls, the same way it
+gates anion and oscillating. Use ``get_product_feature_config`` (``uv``,
+``prompt_sound``, ``screen_display``, ``timed_off``) to decide whether a
+product advertises them. If it does, callers should expose the matching
+command/state fields.
+
+The Fog send path does not invent values. ``FogDeviceManager.sendCommand``
+posts a key only when the cached bean or the user action set it.
+``ProtocolVersion == 0`` companions copy ``UV`` and ``TimedOffHour`` from
+cache when present; display, tone, and timer commands stay single-key.
+Unset library fields stay ``None`` and are omitted from Fog JSON. Sleep is
+``DeyeDeviceMode.SLEEP_MODE``.
 
 .. code-block:: python
 

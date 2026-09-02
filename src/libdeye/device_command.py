@@ -31,8 +31,9 @@ class DeyeDeviceCommand:
         """Initialize the command with the desired device settings.
 
         Extra Fog keys (UV, prompt sound, screen display, timed-off hour)
-        default to ``None`` and are omitted from JSON until a caller or Fog
-        state sets them. Sleep is ``DeyeDeviceMode.SLEEP_MODE``.
+        default to ``None`` and are omitted from JSON, matching official
+        ``sendCommand`` skipping null params. Sleep is
+        ``DeyeDeviceMode.SLEEP_MODE``.
         """
         self.anion_switch = anion_switch
         self.water_pump_switch = water_pump_switch
