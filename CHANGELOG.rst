@@ -5,6 +5,9 @@ Changelog
 Unreleased
 ==========
 
+Version 3.0.2
+=============
+
 - Align Fog JSON with official ``FogDeviceManager.sendCommand``: every
   ``PropertyParam`` key is omitted when null, including child lock,
   anion, UV, prompt sound, and screen display. Unset command/state
