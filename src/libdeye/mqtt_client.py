@@ -455,7 +455,7 @@ class BaseDeyeMqttClient(ABC):
         raise NotImplementedError
 
     def _mqtt_on_message(
-        self, _mqtt: mqtt.Client, _userdata: None, msg: mqtt.MQTTMessage
+        self, _mqtt: mqtt.Client, _userdata: Any, msg: mqtt.MQTTMessage
     ) -> None:
         if msg.topic not in self._subscribers:
             return
