@@ -23,17 +23,64 @@ from .device_state import DeyeDeviceState
 
 FogCommandBaseline = DeyeDeviceCommand | DeyeDeviceState
 
+# FogDeviceManager.sendCommand JSON keys, plus GET→SET aliases.
+# TimedOffHour is sent; GET reports TimedShutdownHourSetting.
+FOG_SETTABLE_PROPERTY_ALIASES: tuple[tuple[str, str], ...] = (
+    ("KeyLock", "KeyLock"),
+    ("Mode", "Mode"),
+    ("Power", "Power"),
+    ("UV", "UV"),
+    ("WindSpeed", "WindSpeed"),
+    ("SetHumidity", "SetHumidity"),
+    ("NegativeIon", "NegativeIon"),
+    ("SwingingWind", "SwingingWind"),
+    ("WaterPump", "WaterPump"),
+    ("Sleep", "Sleep"),
+    ("SetTemperature", "SetTemperature"),
+    ("PromptSound", "PromptSound"),
+    ("Screendisplay", "Screendisplay"),
+    ("TimedShutdownHourSetting", "TimedOffHour"),
+    ("TimedOffHour", "TimedOffHour"),
+)
+
+
+def _int_property(value: object) -> int | None:
+    """Parse a Fog property value the way official toIntOrNull does."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.lstrip("-").isdigit():
+            return int(stripped)
+    return None
+
+
+def fog_full_snapshot_from_properties(properties: dict[str, Any]) -> dict[str, int]:
+    """Copy cached Fog GET/MQTT params into official set/properties keys."""
+    snapshot: dict[str, int] = {}
+    for source_key, dest_key in FOG_SETTABLE_PROPERTY_ALIASES:
+        parsed = _int_property(properties.get(source_key))
+        if parsed is not None:
+            snapshot[dest_key] = parsed
+    return snapshot
+
 
 def resolve_fog_command_properties(
     command: DeyeDeviceCommand,
     properties: dict[str, int] | None = None,
     baseline: FogCommandBaseline | None = None,
     protocol_version: int | None = None,
+    last_properties: dict[str, Any] | None = None,
 ) -> dict[str, int]:
     """Build the Fog HTTP property payload.
 
     Official FogDeviceManager.checkNeedAll sends every current param when
     cached ``ProtocolVersion == 0``; otherwise only the changed property.
+    Missing or null cache is partial (checkNeedAll is false).
     """
     if baseline is not None:
         baseline_command = (
@@ -45,7 +92,13 @@ def resolve_fog_command_properties(
             return {}
 
     if protocol_version == 0:
-        return command.to_json()
+        snapshot = (
+            fog_full_snapshot_from_properties(last_properties)
+            if last_properties
+            else {}
+        )
+        snapshot.update(command.to_json())
+        return snapshot
 
     if properties is not None:
         return dict(properties)
@@ -358,11 +411,13 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         """Initialize the Fog MQTT client and ProtocolVersion cache."""
         super().__init__(cloud_api, tls_context)
         self._fog_protocol_versions: dict[str, int] = {}
+        self._fog_last_properties: dict[str, dict[str, Any]] = {}
 
     def _remember_fog_protocol_version(
         self, device_id: str, properties: dict[str, Any]
     ) -> None:
-        """Cache ProtocolVersion from Fog GET/MQTT property payloads."""
+        """Cache ProtocolVersion and settable params from Fog GET/MQTT."""
+        self._fog_last_properties[device_id] = dict(properties)
         protocol_version = properties.get("ProtocolVersion")
         if protocol_version is not None:
             self._fog_protocol_versions[device_id] = int(protocol_version)
@@ -439,6 +494,7 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
             properties=properties,
             baseline=baseline,
             protocol_version=self._fog_protocol_versions.get(device_id),
+            last_properties=self._fog_last_properties.get(device_id),
         )
         if not properties_to_publish:
             return

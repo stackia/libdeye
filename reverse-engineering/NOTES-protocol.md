@@ -50,10 +50,15 @@ Device-list API already includes `is_combo` and `protocol_version` (see
   `device_data` / `device_status`
 - `FogDeviceManager.checkNeedAll`: when the cached
   `PropertyResultBean.protocolVersion == 0`, send every current param;
-  otherwise send only changed fields
+  otherwise send only changed fields. Missing or null cache is partial.
 - Fields included only when non-null: Power, Mode, WindSpeed, SetHumidity,
   KeyLock, NegativeIon, SwingingWind, WaterPump, Sleep, SetTemperature, UV,
-  PromptSound, Screendisplay, TimedOffHour
+  PromptSound, Screendisplay, TimedOffHour. GET reports
+  `TimedShutdownHourSetting`; the send JSON key is `TimedOffHour`.
+- Official per-command `checkNeedAll` copy-paste omits a few fields (for
+  example Power does not copy SwingingWind). libdeye sends the union of
+  cached settable params plus the command overlay, matching the stated
+  "every current param" rule.
 
 Account check: small dehumidifier `DYD-E12A3` reports `ProtocolVersion=0`, so
 the official path sends full params. Humidity `25 → 30 → 25` while powered off

@@ -745,6 +745,13 @@ class TestDeyeFogMqttClient:
         """Official FogDeviceManager.checkNeedAll uses ProtocolVersion == 0."""
         command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
         fog_client._fog_protocol_versions["device456"] = 0
+        fog_client._fog_last_properties["device456"] = {
+            "Power": 0,
+            "SetHumidity": 50,
+            "Sleep": 1,
+            "UV": 0,
+            "TimedShutdownHourSetting": 2,
+        }
 
         await fog_client.publish_command(
             "c2c2d92c049f11e8829100163e0f811e",
@@ -753,10 +760,15 @@ class TestDeyeFogMqttClient:
             properties={"SetHumidity": 45},
         )
 
+        published = command.to_json() | {
+            "Sleep": 1,
+            "UV": 0,
+            "TimedOffHour": 2,
+        }
         cast(
             MagicMock, fog_client._cloud_api
         ).set_fog_platform_device_properties.assert_awaited_once_with(
-            "device456", command.to_json()
+            "device456", published
         )
 
     @pytest.mark.asyncio
@@ -789,6 +801,7 @@ class TestDeyeFogMqttClient:
         )
         await fog_client.query_device_state("product123", "device456")
         assert fog_client._fog_protocol_versions["device456"] == 0
+        assert fog_client._fog_last_properties["device456"]["SetHumidity"] == 50
 
 
 def test_resolve_fog_command_properties_generic_keeps_partial() -> None:
@@ -823,6 +836,41 @@ def test_resolve_fog_command_properties_protocol_version_zero_sends_full() -> No
         protocol_version=0,
     )
     assert properties == command.to_json()
+
+
+def test_resolve_fog_command_properties_protocol_version_zero_merges_cache() -> None:
+    """ProtocolVersion == 0 overlays command fields on the last GET snapshot."""
+    command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
+    properties = resolve_fog_command_properties(
+        command,
+        properties={"SetHumidity": 40},
+        protocol_version=0,
+        last_properties={
+            "Power": 0,
+            "Mode": 2,
+            "WindSpeed": 3,
+            "SetHumidity": 55,
+            "KeyLock": 0,
+            "NegativeIon": 1,
+            "SwingingWind": 0,
+            "WaterPump": 0,
+            "Sleep": "1",
+            "UV": "0",
+            "SetTemperature": "26",
+            "PromptSound": "1",
+            "Screendisplay": "1",
+            "TimedShutdownHourSetting": "3",
+        },
+    )
+    assert properties["Power"] == 1
+    assert properties["SetHumidity"] == 40
+    assert properties["Sleep"] == 1
+    assert properties["UV"] == 0
+    assert properties["SetTemperature"] == 26
+    assert properties["PromptSound"] == 1
+    assert properties["Screendisplay"] == 1
+    assert properties["TimedOffHour"] == 3
+    assert "TimedShutdownHourSetting" not in properties
 
 
 def test_resolve_fog_command_properties_protocol_version_nonzero_keeps_partial() -> (
