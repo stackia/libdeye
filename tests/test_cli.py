@@ -319,9 +319,10 @@ async def test_get_device_state() -> None:
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_mqtt_client.query_device_state.return_value = mock_state
 
-    with patch(
-        "libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client
-    ), patch("libdeye.cli.print_device_state") as mock_print_state:
+    with (
+        patch("libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client),
+        patch("libdeye.cli.print_device_state") as mock_print_state,
+    ):
         await get_device_state(mock_api, "test_device_id")
 
         mock_api.get_device_list.assert_called_once()
@@ -457,9 +458,10 @@ async def test_monitor_device() -> None:
     # Mock the infinite_future to be a future that we can control
     mock_infinite_future: asyncio.Future[None] = asyncio.Future()
 
-    with patch(
-        "libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client
-    ), patch("asyncio.Future", return_value=mock_infinite_future):
+    with (
+        patch("libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client),
+        patch("asyncio.Future", return_value=mock_infinite_future),
+    ):
 
         # Start the monitor_device function in a task
         task = asyncio.create_task(monitor_device(mock_api, "test_device_id"))
@@ -522,9 +524,10 @@ async def test_run_cli_devices_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch("libdeye.cli.list_devices") as mock_list_devices:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.list_devices") as mock_list_devices,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, None)
 
         mock_authenticate.assert_called_once()
@@ -539,9 +542,10 @@ async def test_run_cli_products_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch("libdeye.cli.list_products") as mock_list_products:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.list_products") as mock_list_products,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, None)
 
         mock_authenticate.assert_called_once()
@@ -556,11 +560,10 @@ async def test_run_cli_get_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch(
-        "libdeye.cli.get_device_state"
-    ) as mock_get_device_state:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.get_device_state") as mock_get_device_state,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
 
         mock_authenticate.assert_called_once()
@@ -583,11 +586,10 @@ async def test_run_cli_set_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch(
-        "libdeye.cli.set_device_state"
-    ) as mock_set_device_state:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.set_device_state") as mock_set_device_state,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
 
         mock_authenticate.assert_called_once()
@@ -613,9 +615,10 @@ async def test_run_cli_monitor_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch("libdeye.cli.monitor_device") as mock_monitor_device:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.monitor_device") as mock_monitor_device,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
 
         mock_authenticate.assert_called_once()
@@ -627,9 +630,10 @@ def test_main_no_command() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value.command = None
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.run_cli"
-    ) as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         with pytest.raises(SystemExit) as excinfo:
             main()
 
@@ -651,9 +655,12 @@ def test_main_no_auth_credentials() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value = mock_args
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_config", return_value={}
-    ), patch("builtins.print") as mock_print, patch("libdeye.cli.run_cli") as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_config", return_value={}),
+        patch("builtins.print") as mock_print,
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         with pytest.raises(SystemExit) as excinfo:
             main()
 
@@ -680,11 +687,12 @@ def test_main_no_device_id() -> None:
         mock_parser = MagicMock()
         mock_parser.parse_args.return_value = mock_args
 
-        with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-            "libdeye.cli.load_config", return_value={}
-        ), patch("builtins.print") as mock_print, patch(
-            "libdeye.cli.run_cli"
-        ) as mock_run:
+        with (
+            patch("argparse.ArgumentParser", return_value=mock_parser),
+            patch("libdeye.cli.load_config", return_value={}),
+            patch("builtins.print") as mock_print,
+            patch("libdeye.cli.run_cli") as mock_run,
+        ):
             with pytest.raises(SystemExit) as excinfo:
                 main()
 
@@ -710,11 +718,12 @@ def test_main_successful_run() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value = mock_args
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_config", return_value={}
-    ), patch("libdeye.cli.run_cli") as mock_run, patch(
-        "logging.basicConfig"
-    ) as mock_logging:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_config", return_value={}),
+        patch("libdeye.cli.run_cli") as mock_run,
+        patch("logging.basicConfig") as mock_logging,
+    ):
         main()
 
         mock_logging.assert_called_once_with(
@@ -743,9 +752,11 @@ def test_main_uses_environment_variables(
     monkeypatch.setenv("DEYE_USERNAME", "env_user")
     monkeypatch.setenv("DEYE_PASSWORD", "env_password")
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_env_file", return_value={}
-    ), patch("libdeye.cli.run_cli") as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_env_file", return_value={}),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         main()
 
         mock_run.assert_called_once()
@@ -772,13 +783,17 @@ def test_main_environment_overrides_env_file(
     monkeypatch.setenv("DEYE_USERNAME", "env_user")
     monkeypatch.setenv("DEYE_PASSWORD", "env_password")
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_env_file",
-        return_value={
-            "DEYE_USERNAME": "file_user",
-            "DEYE_PASSWORD": "file_password",
-        },
-    ), patch("libdeye.cli.run_cli") as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch(
+            "libdeye.cli.load_env_file",
+            return_value={
+                "DEYE_USERNAME": "file_user",
+                "DEYE_PASSWORD": "file_password",
+            },
+        ),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         main()
 
         mock_run.assert_called_once()
@@ -799,14 +814,18 @@ def test_main_cli_args_override_environment() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value = mock_args
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_config",
-        return_value={
-            "DEYE_USERNAME": "env_user",
-            "DEYE_PASSWORD": "env_password",
-            "DEYE_AUTH_TOKEN": "env_token",
-        },
-    ), patch("libdeye.cli.run_cli") as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch(
+            "libdeye.cli.load_config",
+            return_value={
+                "DEYE_USERNAME": "env_user",
+                "DEYE_PASSWORD": "env_password",
+                "DEYE_AUTH_TOKEN": "env_token",
+            },
+        ),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         main()
 
         mock_run.assert_called_once()
@@ -834,9 +853,11 @@ def test_main_uses_environment_device_id(
     _clear_deye_environ(monkeypatch)
     monkeypatch.setenv("DEYE_DEVICE_ID", "env_device_id")
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_env_file", return_value={}
-    ), patch("libdeye.cli.run_cli") as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_env_file", return_value={}),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         main()
 
         mock_run.assert_called_once()
