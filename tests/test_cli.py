@@ -160,6 +160,70 @@ async def test_list_devices() -> None:
 
 
 @pytest.mark.asyncio
+async def test_list_devices_fog_combo_and_unknown_platform() -> None:
+    """FogCombo has a named platform; unknown ids are printed as Unknown(n)."""
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+    mock_api.get_device_list.return_value = [
+        {
+            "device_name": "Combo Device",
+            "device_id": "combo_device_id",
+            "online": True,
+            "product_name": "DYD-P40",
+            "product_id": "d71936c6951c11f0a8200242ac480009",
+            "product_type": "除湿机",
+            "mac": "AA:BB:CC:DD:EE:FF",
+            "platform": DeyeIotPlatform.FogCombo.value,
+        },
+        {
+            "device_name": "Unlisted Device",
+            "device_id": "unlisted_device_id",
+            "online": False,
+            "product_name": "Unknown Model",
+            "product_id": "unknown_product",
+            "product_type": "除湿机",
+            "mac": "00:00:00:00:00:00",
+            "platform": 4,
+        },
+    ]
+
+    with patch("sys.stdout") as mock_stdout:
+        await list_devices(mock_api)
+        output = "".join(call.args[0] for call in mock_stdout.write.call_args_list)
+
+    assert "FogCombo" in output
+    assert "Unknown(4)" in output
+
+
+@pytest.mark.asyncio
+async def test_get_fog_combo_device_state_uses_fog_client() -> None:
+    """Platform 3 uses the Fog MQTT/API client."""
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+    mock_api.get_device_list.return_value = [
+        {
+            "device_name": "Combo Device",
+            "device_id": "combo_device_id",
+            "product_id": "d71936c6951c11f0a8200242ac480009",
+            "platform": DeyeIotPlatform.FogCombo.value,
+        }
+    ]
+
+    mock_mqtt_client = AsyncMock(spec=DeyeFogMqttClient)
+    mock_state = MagicMock(spec=DeyeDeviceState)
+    mock_mqtt_client.query_device_state.return_value = mock_state
+
+    with patch("libdeye.cli.DeyeFogMqttClient", return_value=mock_mqtt_client), patch(
+        "libdeye.cli.DeyeClassicMqttClient"
+    ) as mock_classic, patch("libdeye.cli.print_device_state"):
+        await get_device_state(mock_api, "combo_device_id")
+
+    mock_classic.assert_not_called()
+    mock_mqtt_client.connect.assert_called_once()
+    mock_mqtt_client.query_device_state.assert_called_once_with(
+        "d71936c6951c11f0a8200242ac480009", "combo_device_id"
+    )
+
+
+@pytest.mark.asyncio
 async def test_list_products() -> None:
     """Test listing products."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
