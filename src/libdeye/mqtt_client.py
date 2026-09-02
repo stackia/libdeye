@@ -465,7 +465,7 @@ class BaseDeyeMqttClient(ABC):
                 self._loop.call_soon_threadsafe(
                     callback, self._process_message_payload(msg)
                 )
-        except (json.JSONDecodeError, KeyError):
+        except json.JSONDecodeError, KeyError:
             pass
 
     def _subscribe_topic(
