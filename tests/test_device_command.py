@@ -306,7 +306,7 @@ def test_deye_device_command_default_equality() -> None:
         target_humidity=60,
     )
     assert command1 == command3
-    assert not (command1 != command3)
+    assert (command1 != command3) is False
 
 
 def test_encode_fog_combo_frame_matches_official_command_manger() -> None:

@@ -4,11 +4,7 @@ from enum import IntFlag, auto
 from typing import override
 
 from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties
-from .const import (
-    DeyeDeviceMode,
-    DeyeFanSpeed,
-    get_product_feature_config,
-)
+from .const import DeyeDeviceMode, DeyeFanSpeed, get_product_feature_config
 from .device_command import DeyeDeviceCommand
 
 

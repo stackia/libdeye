@@ -405,6 +405,7 @@ class TestDeyeFogComboMqttClient:
 
     @pytest.fixture
     def cloud_api_mock(self) -> MagicMock:
+        """Return a mock DeyeCloudApi with Classic MQTT credentials."""
         mock = MagicMock(spec=DeyeCloudApi)
         mock.get_deye_platform_mqtt_info = AsyncMock(
             return_value=cast(
@@ -424,9 +425,13 @@ class TestDeyeFogComboMqttClient:
 
     @pytest_asyncio.fixture
     async def combo_client(self, cloud_api_mock: MagicMock) -> DeyeFogComboMqttClient:
-        with patch("libdeye.mqtt_client.mqtt.Client", return_value=MagicMock()), patch(
-            "libdeye.mqtt_client.get_running_loop",
-            return_value=asyncio.get_running_loop(),
+        """Return a DeyeFogComboMqttClient instance."""
+        with (
+            patch("libdeye.mqtt_client.mqtt.Client", return_value=MagicMock()),
+            patch(
+                "libdeye.mqtt_client.get_running_loop",
+                return_value=asyncio.get_running_loop(),
+            ),
         ):
             client = DeyeFogComboMqttClient(cloud_api_mock)
             client._endpoint = "test-endpoint"
@@ -484,7 +489,7 @@ class TestDeyeFogComboMqttClient:
     async def test_query_still_uses_classic_poll_bytes(
         self, combo_client: DeyeFogComboMqttClient
     ) -> None:
-        """FogCombo query keeps Classic ``\\x00\\x01`` on the same MQTT topic."""
+        """FogCombo query keeps Classic poll bytes 00 01 on the same MQTT topic."""
         with patch.object(combo_client._mqtt, "is_connected", return_value=True):
             with patch.object(combo_client._mqtt, "publish") as mock_publish:
                 await combo_client.publish_command(
@@ -500,6 +505,7 @@ class TestDeyeFogComboMqttClient:
     async def test_empty_baseline_diff_does_not_publish(
         self, combo_client: DeyeFogComboMqttClient
     ) -> None:
+        """Skip FogCombo MQTT when the command matches the baseline."""
         command = DeyeDeviceCommand(power_switch=True, target_humidity=50)
         with patch.object(combo_client._mqtt, "is_connected", return_value=True):
             with patch.object(combo_client._mqtt, "publish") as mock_publish:
@@ -1089,9 +1095,12 @@ def test_resolve_fog_command_properties_protocol_version_nonzero_keeps_partial()
 async def test_mqtt_client_for_platform() -> None:
     """Classic and FogCombo share Classic MQTT; Fog uses the Fog client."""
     cloud_api = MagicMock(spec=DeyeCloudApi)
-    with patch("libdeye.mqtt_client.mqtt.Client", return_value=MagicMock()), patch(
-        "libdeye.mqtt_client.get_running_loop",
-        return_value=asyncio.get_running_loop(),
+    with (
+        patch("libdeye.mqtt_client.mqtt.Client", return_value=MagicMock()),
+        patch(
+            "libdeye.mqtt_client.get_running_loop",
+            return_value=asyncio.get_running_loop(),
+        ),
     ):
         classic = mqtt_client_for_platform(DeyeIotPlatform.Classic, cloud_api)
         fog = mqtt_client_for_platform(DeyeIotPlatform.Fog, cloud_api)

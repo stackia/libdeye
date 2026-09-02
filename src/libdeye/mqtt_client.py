@@ -86,7 +86,7 @@ def resolve_fog_command_properties(
 
 def mqtt_client_type_for_platform(
     platform: int | DeyeIotPlatform,
-) -> type["BaseDeyeMqttClient"]:
+) -> type[BaseDeyeMqttClient]:
     """Return the MQTT client class for an IoT platform value."""
     if int(platform) == DeyeIotPlatform.FogCombo:
         return DeyeFogComboMqttClient
@@ -99,7 +99,7 @@ def mqtt_client_for_platform(
     platform: int | DeyeIotPlatform,
     cloud_api: DeyeCloudApi,
     tls_context: SSLContext | None = None,
-) -> "BaseDeyeMqttClient":
+) -> BaseDeyeMqttClient:
     """Return the MQTT client implementation for an IoT platform value."""
     return mqtt_client_type_for_platform(platform)(cloud_api, tls_context)
 
@@ -343,11 +343,11 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
 
 
 class DeyeFogComboMqttClient(DeyeClassicMqttClient):
-    """Classic MQTT transport with official FogCombo single-property frames.
+    """Classic MQTT transport with official Combo single-property frames.
 
-    CommandManger: if isFog → Fog HTTP; else if isCombo → sendSingleCommand
-    bytes ``{2, 17, cmd, value}`` on the Classic MQTT command topic.
-    Receive/query stay on Classic ``status/hex`` and ``\\x00\\x01``.
+    CommandManger: if isFog then Fog HTTP; else if isCombo then
+    sendSingleCommand bytes {2, 17, cmd, value} on the Classic MQTT command
+    topic. Receive and query stay on Classic status/hex and poll bytes 00 01.
     """
 
     @override

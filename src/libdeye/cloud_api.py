@@ -45,7 +45,7 @@ def iot_platform_uses_fog_client(platform: int | DeyeIotPlatform) -> bool:
     to share Classic MQTT rather than Fog HTTP.
     """
     value = int(platform)
-    return value != DeyeIotPlatform.Classic and value != DeyeIotPlatform.FogCombo
+    return value not in {DeyeIotPlatform.Classic, DeyeIotPlatform.FogCombo}
 
 
 def iot_platform_sends_partial_commands(platform: int | DeyeIotPlatform) -> bool:
