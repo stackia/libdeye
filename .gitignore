@@ -52,6 +52,9 @@ MANIFEST
 *.env
 !.env.example
 
-# Deye Smart APK (106MB, over GitHub's file limit). Use
-# reverse-engineering/apk/download-apk.sh instead.
+# Deye Smart APK and unpack intermediates (not kept in git).
+# Use reverse-engineering/apk/download-apk.sh; dump DEX with tools/unidbg.
 reverse-engineering/apk/*.apk
+reverse-engineering/unpacked/dex/
+reverse-engineering/unpacked/qh/
+reverse-engineering/unpacked/jadx-full/

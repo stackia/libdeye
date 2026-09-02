@@ -1,11 +1,15 @@
-# APK 下载
+# APK download
 
-本目录只放元数据和脚本。APK 二进制约 106 MB，超过 GitHub 100 MB 单文件限制，不进 git。
+This directory keeps metadata and a download script only. The APK binary is
+about 106 MB, over GitHub's 100 MB file limit, and is not in git.
 
 ```bash
 ./download-apk.sh
 ```
 
-成功后得到 `com.deye_4.2.1.apk`（gitignore）。MD5 必须是 `F2201AC1CA9EB94218C8990008D1E476`。
+On success you get `com.deye_4.2.1.apk` (gitignored). MD5 must be
+`F2201AC1CA9EB94218C8990008D1E476`.
 
-`appdetail.json` 是 2026-09-02 从应用宝详情页抓到的字段副本（`apkUrl`、`apkMd5`、`fileSize`）。CDN 路径会变，脚本会先尝试再解析详情页。
+`appdetail.json` is a 2026-09-02 snapshot of Yingyongbao detail fields
+(`apkUrl`, `apkMd5`, `fileSize`). CDN paths rotate; the script tries the live
+detail page first, then this fallback URL.

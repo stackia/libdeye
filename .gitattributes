@@ -1,5 +1,2 @@
-# Reverse-engineering dump is not library source. Keep GitHub language
-# stats on Python, and treat DEX / qh blobs as binary.
+# Reverse-engineering notes and JADX output are not library source.
 reverse-engineering/** linguist-vendored
-reverse-engineering/unpacked/dex/*.dex binary
-reverse-engineering/unpacked/qh/*.bin binary

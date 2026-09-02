@@ -1,41 +1,48 @@
-# 脱壳时用过的工具
+# Unpack tools
 
-Unidbg Java dumper 期望工作目录布局与当时相同：
+The Unidbg Java dumper expects the same working-directory layout used during
+the original dump:
 
 ```
 /tmp/deye-apk/com.deye_4.2.1.apk
 /tmp/deye-apk/native/stage2_flat.bin
-/tmp/deye-apk/unidbg-dump/          # 输出目录
+/tmp/deye-apk/unidbg-dump/          # output directory (DEX, not committed)
 ```
 
-把本仓库 `apk/download-apk.sh` 下好的 APK 链过去即可：
+Symlink the APK from this repo after running `apk/download-apk.sh`:
 
 ```bash
 mkdir -p /tmp/deye-apk
 ln -sf "$(pwd)/reverse-engineering/apk/com.deye_4.2.1.apk" /tmp/deye-apk/com.deye_4.2.1.apk
 ```
 
-`stage2_flat.bin` 是从加固 SO 解出来的第二段镜像，没有进 git。没有它就无法重跑 `Stage2Dump`；直接使用 [`../unpacked/dex/`](../unpacked/dex/) 即可继续分析协议。
+`stage2_flat.bin` is the second-stage image extracted from the packer SO. It
+is not in git. Without it, `Stage2Dump` cannot be re-run. Protocol analysis
+can use the JADX sources under [`../unpacked/jadx/`](../unpacked/jadx/).
 
-## Unidbg（最终成功路径）
+## Unidbg (path that worked)
 
-Maven 项目：[`unidbg/`](unidbg/)，依赖 `unidbg-android` 0.9.8。
+Maven project: [`unidbg/`](unidbg/), depends on `unidbg-android` 0.9.8.
 
 ```bash
 cd reverse-engineering/tools/unidbg
 mvn -q -DskipTests exec:java
 ```
 
-主类 `dump.Stage2Dump`：补 JNI 环境、映射 APK、跑 `JNI_OnLoad`、从内存写出 DEX。路径全部写死在 Java 源码里（`/tmp/deye-apk/...`）。
+Main class `dump.Stage2Dump`: stub the JNI environment, map the APK, run
+`JNI_OnLoad`, write DEX from memory. Paths are hardcoded in the Java sources
+(`/tmp/deye-apk/...`).
 
-## 离线猜密钥（未成功）
+## Offline key guessing (did not work)
 
-`brute_dex_key.py` 与 `try_qh_decrypt.py` 也写死 `/tmp/deye-apk/...`。它们用来试 qh/RC4/MD5 变种，没有打出 `dex\n`。真实 DEX 来自 Unidbg dump，不来自这些脚本。
+`brute_dex_key.py` and `try_qh_decrypt.py` also hardcode `/tmp/deye-apk/...`.
+They tried qh/RC4/MD5 variants and never produced `dex\n`. Real DEX came from
+the Unidbg dump, not these scripts.
 
-## 下过但没用上
+## Downloaded but unused
 
-云环境没有 Android 模拟器/真机，所以没有跑：
+The cloud VM had no Android emulator or device, so these were not run:
 
 - BlackDex
-- Frida server（约 295 MB，不进 git）
-- 重打包签名后的 APK（`apksigner` + debug keystore）
+- Frida server (~295 MB, not in git)
+- Repacked/signed APK (`apksigner` + debug keystore)

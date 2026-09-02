@@ -18,8 +18,9 @@ Unreleased
   and treat ``CompressorStatus`` as the running indicator for that model.
 - Require Python 3.14.2+ and align aiohttp, PyJWT, and paho-mqtt with Home Assistant 2026.3.0.
 - Migrate development tooling to uv.
-- Add ``reverse-engineering/`` with the Deye Smart 4.2.1 unpack notes, dumped
-  DEX, JADX sources, and the Unidbg/JADX tooling used to recover them.
+- Add ``reverse-engineering/`` with Deye Smart 4.2.1 unpack notes, JADX
+  sources, and the Unidbg/JADX tooling used to recover them. The APK, DEX,
+  and qh blobs are not stored in git.
 
 Version 2.1.3
 =============

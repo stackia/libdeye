@@ -1,36 +1,37 @@
-# 解包产物
-
-## `dex/`
-
-360 加固解密后、从 Unidbg 内存写出的 9 个 DEX。这是 JADX 的输入。SHA256 见 `dex/SHA256SUMS`。
-
-业务集中在 `classes3.dex`（`com.deye`）和 `classes7.dex`（`io.fogcloud`）。
+# Unpacked artifacts
 
 ## `jadx/`
 
-对 `classes3.dex` + `classes6.dex` + `classes7.dex` 跑 JADX 1.5.3 后，只保留：
+JADX 1.5.3 output from dumped `classes3.dex` + `classes6.dex` + `classes7.dex`,
+keeping only:
 
-- `com/deye/` — 德业业务（`CommandManger`、`FogDeviceManager`、`MxchipApplication`、combo 等）
+- `com/deye/` — Deye business (`CommandManger`, `FogDeviceManager`,
+  `MxchipApplication`, combo, …)
 - `io/fogcloud/` — FogCloud SDK
 
-没有收录 OkHttp / Kotlin / React Native 等第三方反编译结果。
+OkHttp / Kotlin / React Native third-party decompilation is not in git.
 
-重新生成（需要本机有 `jadx`）：
+To regenerate (needs `jadx` on PATH and a local DEX dump):
 
 ```bash
 ./decompile-jadx.sh
 ```
 
+By default the script reads DEX from `/tmp/deye-apk/unidbg-dump/dex`.
+
 ## `jadx-protocol/`
 
-对照 `libdeye` 时单独拷出的协议类，避免在整包 JADX 树里翻：
+Protocol classes copied out so comparison with `libdeye` does not require
+walking the full JADX tree:
 
-`CommandManger`、`FogDeviceManager`、`DeYeMqttManager`、`DeYeFogMqttManager`、`DeYeHttpRequestManager`、`ComboManager`、`DehumidifierBean`、`PropertyParam`、`RetrofitService`、`UnifiedMqttService` 等。
+`CommandManger`, `FogDeviceManager`, `DeYeMqttManager`, `DeYeFogMqttManager`,
+`DeYeHttpRequestManager`, `ComboManager`, `DehumidifierBean`, `PropertyParam`,
+`RetrofitService`, `UnifiedMqttService`, and related types.
 
 ## `control_panel/dehumidifier/`
 
-APK `assets/control_panel/dehumidifier/*.json` 的明文拷贝。机型能力在这里；IoT 平台路由不在这里。
+Plaintext copy of APK `assets/control_panel/dehumidifier/*.json`. Product
+capabilities live here. IoT platform routing does not.
 
-## `qh/`
-
-加固 `classes.dex` 尾巴解开过程中的中间 blob（`qh-layer1.bin`、`qh-es.bin`、`qh-rest.bin`）。给以后继续抠 360 算法用，不是 Java 源码。
+DEX dumps and qh blobs are not stored in this repository. See
+[`../NOTES-unpack.md`](../NOTES-unpack.md).

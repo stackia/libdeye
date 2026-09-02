@@ -1,72 +1,92 @@
-# Deye Smart Android 逆向资料
+# Deye Smart Android reverse-engineering
 
-本目录保存对 **德业智能 Android `com.deye` 4.2.1**（versionCode 141）的脱壳过程、工具、笔记，以及解包后的业务源码，供后续协议分析使用。
+This directory holds the unpack process, tools, notes, and decompiled
+business sources for **Deye Smart Android `com.deye` 4.2.1** (versionCode 141).
+Use it to compare `libdeye` against the official send/receive path.
 
-官方应用不是开源软件。这里的 Java 是 JADX 从脱壳 DEX 还原的结果，版权仍归浙江德业环境电器有限公司。只用于 `libdeye` 协议对照，不要当作可再分发的 App 源码。
+The official app is not open source. Java under `unpacked/jadx` is JADX output
+from dumped DEX. Copyright remains with Zhejiang Deye. Do not redistribute it
+as an app source tree.
 
-## 不要提交 APK 本体
+DEX files, qh blobs, native images, and the APK itself are **not** in git.
+Download the APK and dump DEX locally if you need to re-run JADX.
 
-APK 约 **106.4 MB**（111,556,698 字节），超过 GitHub 单文件 100 MB 限制，因此仓库里只放下载元数据和脚本。
+## Do not commit the APK
 
-| 项 | 值 |
+The APK is about **106.4 MB** (111,556,698 bytes), over GitHub's 100 MB file
+limit. This repo only keeps download metadata and a script.
+
+| Item | Value |
 | --- | --- |
-| 包名 | `com.deye` |
-| 应用名 | 德业智能 |
-| 版本 | 4.2.1（versionCode 141） |
-| 渠道 | 腾讯应用宝 |
-| 详情页 | https://a.app.qq.com/o/simple.jsp?pkgname=com.deye |
+| Package | `com.deye` |
+| App name | 德业智能 (Deye Smart) |
+| Version | 4.2.1 (versionCode 141) |
+| Channel | Tencent Yingyongbao |
+| Detail page | https://a.app.qq.com/o/simple.jsp?pkgname=com.deye |
 | APK MD5 | `F2201AC1CA9EB94218C8990008D1E476` |
-| 签名 SHA1（`META-INF/DEYE.RSA` PKCS#7） | `0caaab3d2a6a16552e44be847d825efb836d55f8` |
+| Signing cert SHA1 (`META-INF/DEYE.RSA` PKCS#7) | `0caaab3d2a6a16552e44be847d825efb836d55f8` |
 
-下载：
+Download:
 
 ```bash
 ./reverse-engineering/apk/download-apk.sh
 ```
 
-脚本会把 APK 写到 `reverse-engineering/apk/com.deye_4.2.1.apk`（该路径已 gitignore），并校验 MD5。
+The script writes `reverse-engineering/apk/com.deye_4.2.1.apk` (gitignored)
+and checks the MD5.
 
-## 目录
+## Layout
 
 ```
 reverse-engineering/
-  README.md                 本文件
-  NOTES-unpack.md           360 加固脱壳过程、踩坑、地址
-  NOTES-protocol.md         Classic / Fog / FogCombo 发送接收结论
-  apk/                      应用宝元数据与下载脚本（不含 APK 二进制）
-  tools/                    当时用过的 Unidbg / 密钥探测脚本
+  README.md                 this file
+  NOTES-unpack.md           360 Jiagu unpack notes, pitfalls, addresses
+  NOTES-protocol.md         Classic / Fog / Combo send and receive
+  NOTICE.md                 copyright notice for JADX output
+  apk/                      Yingyongbao metadata and download script
+  tools/                    Unidbg dumper and offline key-guess scripts
   unpacked/
-    dex/                    脱壳后的 classes.dex … classes9.dex
-    jadx/                   JADX：com.deye + io.fogcloud
-    jadx-protocol/          协议相关类的单独摘录（当时对照 libdeye 用的那批）
-    control_panel/          APK 明文机型 JSON
-    qh/                     加固 qh 配置/blob 中间产物
+    jadx/                   JADX: com.deye + io.fogcloud
+    jadx-protocol/          protocol classes copied for easier comparison
+    control_panel/          plaintext product-panel JSON from the APK
 ```
 
-业务 DEX 主要在：
+Business DEX (dump locally with Unidbg; not in git):
 
-- `unpacked/dex/classes3.dex` — `com.deye`（含 `CommandManger` / `FogDeviceManager`）
-- `unpacked/dex/classes7.dex` — `io.fogcloud` FogCloud SDK
-- `unpacked/dex/classes6.dex` — 少量 `com.deye` 残留
+- `classes3.dex` — `com.deye` (`CommandManger`, `FogDeviceManager`)
+- `classes7.dex` — `io.fogcloud` FogCloud SDK
+- `classes6.dex` — a small amount of leftover `com.deye`
 
-重新反编译：
+Re-decompile after a local DEX dump:
 
 ```bash
 ./reverse-engineering/unpacked/decompile-jadx.sh
 ```
 
-## 工具与操作方式（摘要）
+## Tools (short version)
 
-完整步骤见 [`NOTES-unpack.md`](NOTES-unpack.md)。
+Full steps: [`NOTES-unpack.md`](NOTES-unpack.md).
 
-1. 从应用宝拉取 APK，核对 MD5。
-2. `apktool d` 只能看到 360 加固 stub（`com.stub.StubApp`、`eyed.moc`、`libjiagu_vip*.so`）。业务 Java 不在明文 `classes.dex` 里。
-3. UI 是 React Native + Hermes bytecode；机型面板 JSON 在 `assets/control_panel/dehumidifier/`，明文可直接拷。
-4. 用 Unidbg（`tools/unidbg`，`unidbg-android` 0.9.8）加载 360 Jiagu VIP **1.4.0.5** 的 inner ELF / stage-2 镜像，模拟 `JNI_OnLoad`，从内存 dump 出 9 个真实 DEX。
-5. JADX 1.5.3 反编译 dump 出的 DEX。协议路由以 `CommandManger` 为准。
+1. Download the APK from Yingyongbao and verify MD5.
+2. `apktool d` only shows the 360 packer stub (`com.stub.StubApp`, `eyed.moc`,
+   `libjiagu_vip*.so`). Business Java is not in the plaintext `classes.dex`.
+3. UI is React Native + Hermes bytecode. Product-panel JSON lives in
+   `assets/control_panel/dehumidifier/` and is copied here in plaintext.
+4. Unidbg (`tools/unidbg`, `unidbg-android` 0.9.8) loads 360 Jiagu VIP
+   **1.4.0.5** inner ELF / stage-2, runs `JNI_OnLoad`, and dumps nine real DEX
+   files from memory.
+5. JADX 1.5.3 decompiles the dumped DEX. Protocol routing is `CommandManger`.
 
-360 把大量字符串加密成 `StubApp.getString2(id)`。方法名、`PropertyParam` JSON 字段、Retrofit path、Combo 字节 opcode 是明文。Classic 命令 topic 后缀在 APK 里仍是 `getString2(44821)`，账号实测为 `/command/hex` 与 `/status/hex`。
+360 encrypts many string literals as `StubApp.getString2(id)`. Method names,
+`PropertyParam` JSON fields, Retrofit paths, and Combo opcodes are plaintext.
+The Classic command topic suffix is still `getString2(44821)` in the APK;
+account traffic uses `/command/hex` and `/status/hex`.
 
-## 协议结论（一句话）
+## Protocol (one paragraph)
 
-官方 `CommandManger`：`if isFog → Fog HTTP; else if isCombo → Classic MQTT {2,17,cmd,value}; else Classic 10 字节`。`isFog` 是 `platform == 2 || platform == 3`，所以 **platform 3 在官方 App 里走 Fog HTTP**。Combo 字节只在 Fog 为假且 `is_combo && protocol_version == combo_V1.0` 时发送。`libdeye` 目前按 `platform == 3` 走 Combo MQTT。细节见 [`NOTES-protocol.md`](NOTES-protocol.md)。
+Official `CommandManger`: `if isFog → Fog HTTP; else if isCombo → Classic MQTT
+{2,17,cmd,value}; else Classic 10-byte MQTT`. `isFog` is
+`platform == 2 || platform == 3`, so **platform 3 uses Fog HTTP in the official
+app**. Combo bytes are sent only when Fog is false and
+`is_combo && protocol_version == combo_V1.0`. See
+[`NOTES-protocol.md`](NOTES-protocol.md).
