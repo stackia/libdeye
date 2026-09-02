@@ -1,0 +1,100 @@
+{
+  "deviceName": "飞利浦空气净化器_AirCleanerO2",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": true,
+  "hasHistoryData": true,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "power": {
+    "off": "off",
+    "on": "on"
+  },
+  "pushSwitch": {
+    "off": "off",
+    "on": "on"
+  },
+  "childLock": {
+    "off": "off",
+    "on": "on"
+  },
+  "dehumidify": {
+    "off": "off",
+    "on": "on"
+  },
+  "sterilization": {
+    "off": "off",
+    "on": "on"
+  },
+  "anion": {
+    "off": "off",
+    "on": "on"
+  },
+  "lampPanel": {
+    "off": "off",
+    "on": "on"
+  },
+  "lampRing": {
+    "off": "off",
+    "on": "on"
+  },
+  "mode": {
+    "icon": [
+      "2131492869",
+      "2131492869",
+      "2131492869",
+      "2131492869"
+    ],
+    "key": [
+      "intelligence",
+      "degerming",
+      "automatic",
+      "sleep"
+    ],
+    "name": [
+      "智能",
+      "除菌",
+      "自动",
+      "睡眠"
+    ],
+    "value": [
+      "i",
+      "d",
+      "a",
+      "s"
+    ]
+  },
+  "speed": {
+    "icon": [
+      "2131492869",
+      "2131492869",
+      "2131492869",
+      "2131492869"
+    ],
+    "key": [
+      "Zero",
+      "First",
+      "Second",
+      "Third"
+    ],
+    "name": [
+      "零档",
+      "一档",
+      "二档",
+      "三档"
+    ],
+    "value": [
+      "0",
+      "1",
+      "2",
+      "3"
+    ]
+  },
+  "timingLock": {
+    "time": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  }
+}

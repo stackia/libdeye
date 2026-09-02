@@ -1,0 +1,93 @@
+{
+  "deviceModel": "DYD-B13A3",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": true,
+  "hasHistoryData": false,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "hasHumidityData": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "anion": {
+    "off": "0",
+    "on": "1"
+  },
+  "displayScreen": {
+    "off": "0",
+    "on": "1"
+  },
+  "tone": {
+    "off": "0",
+    "on": "1"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/manual_unselect.png",
+      "img/mode/drying_unselect.png",
+      "img/mode/sleep_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/manual_select.png",
+      "img/mode/drying_select.png",
+      "img/mode/sleep_select.png"
+    ],
+    "key": [
+      "dehumidify",
+      "drying",
+      "sleep"
+    ],
+    "name": [
+      "手动",
+      "干衣",
+      "睡眠"
+    ],
+    "nameEn": [
+      "Manual",
+      "Drying",
+      "Sleep"
+    ],
+    "value": [
+      "0",
+      "1",
+      "6"
+    ]
+  },
+  "humidity": {
+    "tickNum": "7",
+    "min": "40",
+    "max": "70",
+    "co": "35"
+  },
+  "speed": {
+    "iconNormal": [
+      "img/wind_speed/low_wind_gray.png",
+      "img/wind_speed/high_wind_gray.png"
+    ],
+    "iconSelected": [
+      "img/wind_speed/low_wind_white.png",
+      "img/wind_speed/high_wind_white.png"
+    ],
+    "key": [
+      "low",
+      "high"
+    ],
+    "name": [
+      "低风",
+      "高风"
+    ],
+    "nameEn": [
+      "Low",
+      "High"
+    ],
+    "value": [
+      "1",
+      "3"
+    ]
+  }
+}

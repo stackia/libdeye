@@ -1,0 +1,131 @@
+{
+  "deviceModel": "DY_V60A3",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": true,
+  "hasHistoryData": false,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "hasHumidityData": true,
+  "hasPartsManager": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "anion": {
+    "off": "0",
+    "on": "1"
+  },
+  "defrost": {
+    "off": "0",
+    "on": "1"
+  },
+  "tone": {
+    "off": "0",
+    "on": "1"
+  },
+  "displayScreen": {
+    "off": "0",
+    "on": "1"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/automatic_unselect.png",
+      "img/mode/drying_unselect.png",
+      "img/mode/sleep_unselect.png",
+      "img/mode/fresh_unselect.png",
+      "img/mode/strong_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/automatic_select.png",
+      "img/mode/drying_select.png",
+      "img/mode/sleep_select.png",
+      "img/mode/fresh_select.png",
+      "img/mode/strong_select.png"
+    ],
+    "key": [
+      "automatic",
+      "drying",
+      "sleep",
+      "air_purification",
+      "turbo"
+    ],
+    "name": [
+      "智能",
+      "干衣",
+      "睡眠",
+      "净化",
+      "急速"
+    ],
+    "nameEn": [
+      "Auto",
+      "Drying",
+      "Sleep",
+      "Purification",
+      "Turbo"
+    ],
+    "value": [
+      "3",
+      "1",
+      "6",
+      "2",
+      "4"
+    ]
+  },
+  "humidity": {
+    "textArray": [
+      "40%",
+      "",
+      "",
+      "55%",
+      "",
+      "",
+      "70%"
+    ],
+    "tickNum": "7",
+    "min": "40",
+    "max": "70",
+    "co": "35"
+  },
+  "speed": {
+    "iconNormal": [
+      "img/wind_speed/low_wind_gray.png",
+      "img/wind_speed/middle_wind_gray.png",
+      "img/wind_speed/high_wind_gray.png",
+      "img/wind_speed/full_wind_gray.png"
+    ],
+    "iconSelected": [
+      "img/wind_speed/low_wind_white.png",
+      "img/wind_speed/middle_wind_white.png",
+      "img/wind_speed/high_wind_white.png",
+      "img/wind_speed/full_wind_white.png"
+    ],
+    "key": [
+      "wind_low",
+      "wind_middle",
+      "wind_high",
+      "full_high"
+    ],
+    "name": [
+      "低风",
+      "中风",
+      "高风",
+      "全速"
+    ],
+    "nameEn": [
+      "Low Wind",
+      "Medium Wind",
+      "High Wind",
+      "Full Speed"
+    ],
+    "value": [
+      "1",
+      "2",
+      "3",
+      "4"
+    ]
+  }
+}

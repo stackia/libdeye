@@ -1,0 +1,96 @@
+{
+  "deviceModel": "DY-SC60Y",
+  "deviceControlStrategy": "wan",
+  "hasScheduler": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "anion": {
+    "off": "0",
+    "on": "1"
+  },
+  "humidity": {
+    "textArray": [
+      "CO(连续除湿)",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "55%",
+      "",
+      "",
+      "",
+      "",
+      "80%"
+    ],
+    "tickNum": "11",
+    "min": "30",
+    "max": "80",
+    "co": "25"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/manual_unselect.png",
+      "img/mode/automatic_unselect.png",
+      "img/mode/drying_unselect.png",
+      "img/mode/sleep_unselect.png",
+      "img/mode/fresh_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/manual_select.png",
+      "img/mode/automatic_select.png",
+      "img/mode/drying_select.png",
+      "img/mode/sleep_select.png",
+      "img/mode/fresh_select.png"
+    ],
+    "key": [
+      "dehumidify",
+      "automatic",
+      "drying",
+      "sleep",
+      "air_purification"
+    ],
+    "name": [
+      "手动",
+      "自动",
+      "干衣",
+      "睡眠",
+      "净化"
+    ],
+    "value": [
+      "0",
+      "3",
+      "1",
+      "6",
+      "2"
+    ]
+  },
+  "speed": {
+    "iconNormal": [
+      "img/wind_speed/low_wind_gray.png",
+      "img/wind_speed/high_wind_gray.png"
+    ],
+    "iconSelected": [
+      "img/wind_speed/low_wind_white.png",
+      "img/wind_speed/high_wind_white.png"
+    ],
+    "key": [
+      "wind_low",
+      "wind_high"
+    ],
+    "name": [
+      "低风",
+      "高风"
+    ],
+    "value": [
+      "1",
+      "3"
+    ]
+  }
+}

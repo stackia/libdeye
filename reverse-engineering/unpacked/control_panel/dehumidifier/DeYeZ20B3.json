@@ -1,0 +1,88 @@
+{
+  "deviceModel": "DY_Z20B3",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": false,
+  "hasHistoryData": false,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/manual_unselect.png",
+      "img/mode/drying_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/manual_select.png",
+      "img/mode/drying_select.png"
+    ],
+    "key": [
+      "dehumidify",
+      "drying"
+    ],
+    "name": [
+      "手动",
+      "干衣"
+    ],
+    "nameEn": [
+      "Manual",
+      "Drying"
+    ],
+    "value": [
+      "0",
+      "1"
+    ]
+  },
+  "humidity": {
+    "textArray": [
+      "CO(连续除湿)",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "55%",
+      "",
+      "",
+      "",
+      "",
+      "80%"
+    ],
+    "tickNum": "11",
+    "min": "30",
+    "max": "80",
+    "co": "25"
+  },
+  "speed": {
+    "iconNormal": [
+      "img/wind_speed/low_wind_gray.png",
+      "img/wind_speed/high_wind_gray.png"
+    ],
+    "iconSelected": [
+      "img/wind_speed/low_wind_white.png",
+      "img/wind_speed/high_wind_white.png"
+    ],
+    "key": [
+      "wind_low",
+      "wind_high"
+    ],
+    "name": [
+      "低风",
+      "高风"
+    ],
+    "nameEn": [
+      "Low Wind",
+      "High Wind"
+    ],
+    "value": [
+      "1",
+      "3"
+    ]
+  }
+}

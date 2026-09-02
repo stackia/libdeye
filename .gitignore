@@ -51,3 +51,7 @@ MANIFEST
 .env
 *.env
 !.env.example
+
+# Deye Smart APK (106MB, over GitHub's file limit). Use
+# reverse-engineering/apk/download-apk.sh instead.
+reverse-engineering/apk/*.apk

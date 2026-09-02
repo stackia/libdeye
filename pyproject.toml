@@ -142,7 +142,7 @@ disallow_untyped_decorators = true
 disallow_untyped_defs = true
 warn_return_any = true
 warn_unreachable = true
-exclude = ["docs"]
+exclude = ["docs", "reverse-engineering"]
 
 [[tool.mypy.overrides]]
 module = "libdeye.*"
@@ -463,6 +463,7 @@ required-version = ">=0.16.4"
 target-version = "py314"
 exclude = [
     "docs",
+    "reverse-engineering",
     ".tox",
     "build",
     "dist",
