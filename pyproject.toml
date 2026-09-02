@@ -19,10 +19,12 @@ classifiers = [
     "Programming Language :: Python :: 3.14",
     "Topic :: Home Automation",
 ]
+# Floor versions match Home Assistant 2026.3.0, the first release
+# that requires Python 3.14.
 dependencies = [
-    "aiohttp>=3.8,<4.0",
-    "PyJWT>=2.0,<3.0",
-    "paho-mqtt>=1.6,<3",
+    "aiohttp>=3.13.3,<4.0",
+    "PyJWT>=2.10.1,<3.0",
+    "paho-mqtt>=2.1.0,<3",
 ]
 dynamic = ["version"]
 
@@ -52,8 +54,10 @@ test = [
     "pytest-cov",
     "pytest-asyncio",
     "aioresponses",
-    # Match the aiohttp version used by Home Assistant core.
-    "aiohttp==3.14.3",
+    # Pin to Home Assistant 2026.3.0 (first release requiring Python 3.14).
+    "aiohttp==3.13.3",
+    "PyJWT==2.10.1",
+    "paho-mqtt==2.1.0",
 ]
 docs = [
     "sphinx>=3.2.1",
