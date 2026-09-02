@@ -324,7 +324,7 @@ async def test_set_device_state() -> None:
             "test_product_id",
             "test_device_id",
             mock_command,
-            properties=None,
+            baseline=None,
         )
         mock_mqtt_client.disconnect.assert_called_once()
 
@@ -346,7 +346,6 @@ async def test_set_fog_device_state_publishes_only_changed_properties() -> None:
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_command = MagicMock()
     mock_state.to_command.return_value = mock_command
-    mock_command.to_json_diff.return_value = {"SetHumidity": 30}
     mock_mqtt_client.query_device_state.return_value = mock_state
 
     with patch("libdeye.cli.DeyeFogMqttClient", return_value=mock_mqtt_client):
@@ -356,12 +355,11 @@ async def test_set_fog_device_state_publishes_only_changed_properties() -> None:
             target_humidity=30,
         )
 
-    mock_command.to_json_diff.assert_called_once_with(mock_state)
     mock_mqtt_client.publish_command.assert_awaited_once_with(
         "test_product_id",
         "test_device_id",
         mock_command,
-        properties={"SetHumidity": 30},
+        baseline=mock_state,
     )
     mock_mqtt_client.disconnect.assert_called_once()
 

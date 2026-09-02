@@ -22,6 +22,7 @@ class FogDevicePropertiesForTest(TypedDict, total=False):
     CurrentEnvironmentalHumidity: int
     CurrentCoilTemperature: int
     CurrentExhaustTemperature: int
+    CompressorStatus: int
 
 
 def test_deye_device_state_init() -> None:
@@ -204,6 +205,59 @@ def test_deye_device_state_fog_missing_values() -> None:
     assert state.target_humidity == 60
     assert state.environment_temperature == 27
     assert state.environment_humidity == 27
+
+
+def test_deye_device_state_parse_unknown_fan_speed() -> None:
+    """WindSpeed=5 is a valid enum member used by DYD-P40."""
+    fog_state: FogDevicePropertiesForTest = {
+        "Power": 1,
+        "WaterTank": 0,
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "SwingingWind": 0,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "Fan": 1,
+        "WindSpeed": 5,
+        "Mode": 3,
+    }
+    state = DeyeDeviceState(cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state))
+    assert state.fan_speed is DeyeFanSpeed.UNKNOWN_SPEED
+
+
+def test_deye_device_state_p40_uses_compressor_status_for_fan_running() -> None:
+    """DYD-P40 Fan stays 1 while off; CompressorStatus is the running indicator."""
+    product_id = "d71936c6951c11f0a8200242ac480009"
+    fog_state: FogDevicePropertiesForTest = {
+        "Power": 0,
+        "WaterTank": 0,
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "SwingingWind": 0,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "Fan": 1,
+        "WindSpeed": 5,
+        "Mode": 3,
+        "CompressorStatus": 0,
+    }
+    p40_state = DeyeDeviceState(
+        cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state),
+        product_id=product_id,
+    )
+    generic_state = DeyeDeviceState(
+        cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state)
+    )
+
+    assert p40_state.fan_running is False
+    assert generic_state.fan_running is True
+
+    fog_state["CompressorStatus"] = 1
+    running_state = DeyeDeviceState(
+        cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state),
+        product_id=product_id,
+    )
+    assert running_state.fan_running is True
 
 
 def test_deye_device_state_equality_same_state() -> None:

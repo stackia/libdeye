@@ -29,6 +29,7 @@ class DeyeFanSpeed(IntEnum):
     MIDDLE = 2
     HIGH = 3
     FULL = 4
+    UNKNOWN_SPEED = 5
 
 
 class DeyeProductConfig(TypedDict):
@@ -45,6 +46,8 @@ class DeyeProductConfig(TypedDict):
     requires_power_in_fog_partial_updates: bool
     requires_mode_in_fog_power_on_updates: bool
     omit_set_humidity_in_fog_auto_updates: bool
+    full_state_fog_commands: bool
+    fan_reports_running_state: bool
 
 
 class DeyeProductPartialConfig(TypedDict, total=False):
@@ -61,14 +64,37 @@ class DeyeProductPartialConfig(TypedDict, total=False):
     requires_power_in_fog_partial_updates: bool
     requires_mode_in_fog_power_on_updates: bool
     omit_set_humidity_in_fog_auto_updates: bool
+    full_state_fog_commands: bool
+    fan_reports_running_state: bool
 
 
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
+    "d71936c6951c11f0a8200242ac480009": {  # DYD-P40
+        "mode": [
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+            DeyeDeviceMode.AUTO_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+            DeyeFanSpeed.UNKNOWN_SPEED,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": True,
+        "oscillating": True,
+        "water_pump": False,
+        "fan_reports_running_state": False,
+    },
     "07dddba41c3011e8829100163e0f811e": {  # 612S
         "mode": [],
         "fan_speed": [DeyeFanSpeed.LOW, DeyeFanSpeed.HIGH],
         "oscillating": False,
         "water_pump": False,
+        "full_state_fog_commands": True,
     },
     "441480dcf29611eca05a0242ac480009": {  # 8220C
         "mode": [DeyeDeviceMode.MANUAL_MODE, DeyeDeviceMode.AUTO_MODE],
@@ -105,6 +131,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "anion": False,
         "oscillating": False,
         "water_pump": False,
+        "full_state_fog_commands": True,
     },
     "86cec9fc5c9811e8829100163e0f811e": {  # D50B3
         "mode": [
@@ -494,6 +521,8 @@ def get_product_feature_config(product_id: str) -> DeyeProductConfig:
         "requires_power_in_fog_partial_updates": False,
         "requires_mode_in_fog_power_on_updates": False,
         "omit_set_humidity_in_fog_auto_updates": False,
+        "full_state_fog_commands": False,
+        "fan_reports_running_state": True,
     }
     try:
         return default | PRODUCT_FEATURE_CONFIG[product_id]

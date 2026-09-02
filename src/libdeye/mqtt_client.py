@@ -10,7 +10,12 @@ from typing import Any, cast
 
 import paho.mqtt.client as mqtt
 
-from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties, DeyeCloudApi
+from .cloud_api import (
+    DeyeApiResponseFogPlatformDeviceProperties,
+    DeyeCloudApi,
+    DeyeIotPlatform,
+    iot_platform_uses_fog_client,
+)
 from .const import (
     QUERY_DEVICE_STATE_COMMAND_CLASSIC,
     DeyeDeviceMode,
@@ -18,6 +23,65 @@ from .const import (
 )
 from .device_command import DeyeDeviceCommand
 from .device_state import DeyeDeviceState
+
+FogCommandBaseline = DeyeDeviceCommand | DeyeDeviceState
+
+
+def resolve_fog_command_properties(
+    product_id: str,
+    command: DeyeDeviceCommand,
+    properties: dict[str, int] | None = None,
+    baseline: FogCommandBaseline | None = None,
+) -> dict[str, int]:
+    """Build the Fog property payload for a product.
+
+    Product-specific flags decide whether to send the full current command
+    state, a caller-supplied partial update, or a diff against *baseline*.
+    Existing U20A3 / V58A3 / U20Air transforms stay scoped to those products.
+    """
+    feature_config = get_product_feature_config(product_id)
+
+    if feature_config["full_state_fog_commands"]:
+        return command.to_json()
+
+    if properties is not None:
+        properties_to_publish = dict(properties)
+    elif baseline is not None:
+        properties_to_publish = command.to_json_diff(baseline)
+    else:
+        properties_to_publish = command.to_json()
+
+    powering_on = properties_to_publish.get("Power") == 1
+    if powering_on and feature_config["requires_mode_in_fog_power_on_updates"]:
+        properties_to_publish["Mode"] = int(command.mode)
+
+    if (
+        (properties is not None or baseline is not None)
+        and properties_to_publish
+        and feature_config["requires_power_in_fog_partial_updates"]
+        and "Power" not in properties_to_publish
+        and command.power_switch
+    ):
+        properties_to_publish["Power"] = 1
+
+    if (
+        feature_config["omit_set_humidity_in_fog_auto_updates"]
+        and command.mode == DeyeDeviceMode.AUTO_MODE
+    ):
+        properties_to_publish.pop("SetHumidity", None)
+
+    return properties_to_publish
+
+
+def mqtt_client_for_platform(
+    platform: int | DeyeIotPlatform,
+    cloud_api: DeyeCloudApi,
+    tls_context: SSLContext | None = None,
+) -> "BaseDeyeMqttClient":
+    """Return the MQTT client implementation for an IoT platform value."""
+    if iot_platform_uses_fog_client(platform):
+        return DeyeFogMqttClient(cloud_api, tls_context)
+    return DeyeClassicMqttClient(cloud_api, tls_context)
 
 
 class BaseDeyeMqttClient(ABC):
@@ -150,6 +214,7 @@ class BaseDeyeMqttClient(ABC):
         device_id: str,
         command: DeyeDeviceCommand,
         properties: dict[str, int] | None = None,
+        baseline: FogCommandBaseline | None = None,
     ) -> None:
         """Publish commands to a device"""
         raise NotImplementedError
@@ -188,7 +253,7 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
         """Subscribe to state changes of specified device."""
         return self._subscribe_topic(
             f"{self._get_topic_prefix(product_id, device_id)}/status/hex",
-            lambda payload: callback(DeyeDeviceState(payload)),
+            lambda payload: callback(DeyeDeviceState(payload, product_id=product_id)),
         )
 
     def subscribe_availability_change(
@@ -209,6 +274,7 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
         device_id: str,
         command: DeyeDeviceCommand | bytes,
         properties: dict[str, int] | None = None,
+        baseline: FogCommandBaseline | None = None,
     ) -> None:
         """Publish commands to a device"""
         topic = f"{self._get_topic_prefix(product_id, device_id)}/command/hex"
@@ -270,7 +336,8 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
                         cast(
                             DeyeApiResponseFogPlatformDeviceProperties,
                             payload["data"]["properties"],
-                        )
+                        ),
+                        product_id=product_id,
                     )
                 )
                 if payload["device_id"] == device_id
@@ -303,35 +370,18 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         device_id: str,
         command: DeyeDeviceCommand,
         properties: dict[str, int] | None = None,
+        baseline: FogCommandBaseline | None = None,
     ) -> None:
         """
         For Fog platform, commands are not published via MQTT.
         Instead, use the cloud API to send commands.
         """
         feature_config = get_product_feature_config(product_id)
-        properties_to_publish = (
-            dict(properties) if properties is not None else command.to_json()
+        properties_to_publish = resolve_fog_command_properties(
+            product_id, command, properties=properties, baseline=baseline
         )
-        powering_on = properties_to_publish.get("Power") == 1
-        if powering_on and feature_config["requires_mode_in_fog_power_on_updates"]:
-            properties_to_publish["Mode"] = int(command.mode)
-
-        if (
-            properties is not None
-            and properties_to_publish
-            and feature_config["requires_power_in_fog_partial_updates"]
-            and "Power" not in properties_to_publish
-            and command.power_switch
-        ):
-            properties_to_publish["Power"] = 1
-
-        if (
-            feature_config["omit_set_humidity_in_fog_auto_updates"]
-            and command.mode == DeyeDeviceMode.AUTO_MODE
-        ):
-            properties_to_publish.pop("SetHumidity", None)
-            if not properties_to_publish:
-                return
+        if not properties_to_publish:
+            return
 
         if feature_config["single_property_fog_commands"]:
             if "Power" in properties_to_publish:
@@ -357,4 +407,4 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         device_properties = await self._cloud_api.get_fog_platform_device_properties(
             device_id
         )
-        return DeyeDeviceState(device_properties)
+        return DeyeDeviceState(device_properties, product_id=product_id)

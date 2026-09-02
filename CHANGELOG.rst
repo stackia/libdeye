@@ -2,6 +2,17 @@
 Changelog
 =========
 
+Version 2.1.7
+=============
+
+- Scope Fog command quirks to the products that reported them: DY-612S and
+  D50A3 send a full Fog command state because omitted properties are treated
+  as resets; other Fog products keep partial diffs.
+- Add DYD-P40 product config, ``DeyeFanSpeed.UNKNOWN_SPEED`` (WindSpeed=5),
+  and treat ``CompressorStatus`` as the running indicator for that model.
+- Route non-Classic IoT platforms, including FogCombo (platform 3), through
+  the Fog MQTT/API client.
+
 Version 2.1.3
 =============
 

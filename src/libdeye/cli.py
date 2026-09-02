@@ -12,7 +12,7 @@ from typing import Optional, cast
 
 import aiohttp
 
-from .cloud_api import DeyeCloudApi, DeyeIotPlatform
+from .cloud_api import DeyeCloudApi, DeyeIotPlatform, iot_platform_uses_fog_client
 from .const import (
     DeyeDeviceMode,
     DeyeFanSpeed,
@@ -63,7 +63,11 @@ async def list_devices(api: DeyeCloudApi) -> None:
             f"   Product: {device['product_name']} ({device['product_id']}) ({device['product_type']})"
         )
         print(f"   MAC: {device['mac']}")
-        print(f"   Platform: {DeyeIotPlatform(device['platform']).name}")
+        try:
+            platform_name = DeyeIotPlatform(device["platform"]).name
+        except ValueError:
+            platform_name = f"Unknown({device['platform']})"
+        print(f"   Platform: {platform_name}")
         print()
 
 
@@ -113,17 +117,15 @@ async def get_device_state(api: DeyeCloudApi, device_id: str) -> None:
         print(f"Device {device_id} not found")
         return
 
-    platform = DeyeIotPlatform(device_info["platform"])
+    platform = device_info["platform"]
 
     # Get MQTT info based on platform
     mqtt_client: BaseDeyeMqttClient
 
-    if platform == DeyeIotPlatform.Classic:
-        # Get MQTT info for Classic platform
-        mqtt_client = DeyeClassicMqttClient(api)
-    elif platform == DeyeIotPlatform.Fog:
-        # Get MQTT info for Fog platform
+    if iot_platform_uses_fog_client(platform):
         mqtt_client = DeyeFogMqttClient(api)
+    else:
+        mqtt_client = DeyeClassicMqttClient(api)
 
     # Connect to MQTT
     await mqtt_client.connect()
@@ -169,17 +171,15 @@ async def set_device_state(
         print(f"Device {device_id} not found")
         return
 
-    platform = DeyeIotPlatform(device_info["platform"])
+    platform = device_info["platform"]
 
     # Get MQTT info based on platform
     mqtt_client: BaseDeyeMqttClient
 
-    if platform == DeyeIotPlatform.Classic:
-        # Get MQTT info for Classic platform
-        mqtt_client = DeyeClassicMqttClient(api)
-    elif platform == DeyeIotPlatform.Fog:
-        # Get MQTT info for Fog platform
+    if iot_platform_uses_fog_client(platform):
         mqtt_client = DeyeFogMqttClient(api)
+    else:
+        mqtt_client = DeyeClassicMqttClient(api)
 
     # Connect to MQTT
     await mqtt_client.connect()
@@ -212,14 +212,11 @@ async def set_device_state(
         if child_lock is not None:
             command.child_lock_switch = child_lock
 
-        properties = (
-            command.to_json_diff(state) if platform == DeyeIotPlatform.Fog else None
-        )
         await mqtt_client.publish_command(
             device_info["product_id"],
             device_id,
             command,
-            properties=properties,
+            baseline=state if iot_platform_uses_fog_client(platform) else None,
         )
 
         print(f"Command sent to device {device_info['device_name']} ({device_id})")
@@ -243,17 +240,15 @@ async def monitor_device(api: DeyeCloudApi, device_id: str) -> None:
         print(f"Device {device_id} not found")
         return
 
-    platform = DeyeIotPlatform(device_info["platform"])
+    platform = device_info["platform"]
 
     # Get MQTT info based on platform
     mqtt_client: BaseDeyeMqttClient
 
-    if platform == DeyeIotPlatform.Classic:
-        # Get MQTT info for Classic platform
-        mqtt_client = DeyeClassicMqttClient(api)
-    elif platform == DeyeIotPlatform.Fog:
-        # Get MQTT info for Fog platform
+    if iot_platform_uses_fog_client(platform):
         mqtt_client = DeyeFogMqttClient(api)
+    else:
+        mqtt_client = DeyeClassicMqttClient(api)
 
     # Connect to MQTT
     await mqtt_client.connect()

@@ -15,14 +15,21 @@ from libdeye.cloud_api import (
     DeyeApiResponseFogPlatformMqttInfo,
     DeyeApiResponseFogPlatformMqttTopics,
     DeyeCloudApi,
+    DeyeIotPlatform,
 )
-from libdeye.const import QUERY_DEVICE_STATE_COMMAND_CLASSIC, DeyeDeviceMode
+from libdeye.const import (
+    QUERY_DEVICE_STATE_COMMAND_CLASSIC,
+    DeyeDeviceMode,
+    DeyeFanSpeed,
+)
 from libdeye.device_command import DeyeDeviceCommand
 from libdeye.device_state import DeyeDeviceState
 from libdeye.mqtt_client import (
     BaseDeyeMqttClient,
     DeyeClassicMqttClient,
     DeyeFogMqttClient,
+    mqtt_client_for_platform,
+    resolve_fog_command_properties,
 )
 
 
@@ -67,6 +74,7 @@ class TestBaseDeyeMqttClient:
             device_id: str,
             command: DeyeDeviceCommand,
             properties: dict[str, int] | None = None,
+            baseline: DeyeDeviceState | DeyeDeviceCommand | None = None,
         ) -> None:
             """Mock implementation of publish_command."""
             pass
@@ -732,3 +740,155 @@ class TestDeyeFogMqttClient:
             MagicMock, fog_client._cloud_api
         ).get_fog_platform_device_properties.call_args[0] == (device_id,)
         assert isinstance(result, DeyeDeviceState)
+
+    @pytest.mark.asyncio
+    async def test_publish_command_sends_full_state_for_612s(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """DY-612S treats omitted Fog properties as resets, so send the full state."""
+        product_id = "07dddba41c3011e8829100163e0f811e"
+        command = DeyeDeviceCommand(
+            power_switch=True,
+            anion_switch=True,
+            target_humidity=55,
+            fan_speed=DeyeFanSpeed.HIGH,
+        )
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            properties={"NegativeIon": 1},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            "device456", command.to_json()
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_sends_full_state_for_d50a3(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """D50A3 uses the same full-state Fog command behavior as DY-612S."""
+        product_id = "c56f9e0c7d2b11e9829100163e0f811e"
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            properties={"SetHumidity": 45},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            "device456", command.to_json()
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_keeps_partial_updates_for_other_products(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Unmentioned products keep sending Fog diffs, not a full command."""
+        product_id = "c2c2d92c049f11e8829100163e0f811e"  # E12A3
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            properties={"SetHumidity": 45},
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            "device456", {"SetHumidity": 45}
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_builds_diff_from_baseline(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """Callers can pass a baseline and let libdeye compute the Fog diff."""
+        product_id = "c2c2d92c049f11e8829100163e0f811e"
+        baseline = DeyeDeviceCommand(power_switch=True, target_humidity=50)
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            baseline=baseline,
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_awaited_once_with(
+            "device456", {"SetHumidity": 45}
+        )
+
+    @pytest.mark.asyncio
+    async def test_publish_command_skips_empty_baseline_diff(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """An unchanged baseline should not publish an empty Fog update."""
+        product_id = "c2c2d92c049f11e8829100163e0f811e"
+        command = DeyeDeviceCommand(power_switch=True, target_humidity=50)
+
+        await fog_client.publish_command(
+            product_id,
+            "device456",
+            command,
+            baseline=command,
+        )
+
+        cast(
+            MagicMock, fog_client._cloud_api
+        ).set_fog_platform_device_properties.assert_not_awaited()
+
+
+def test_resolve_fog_command_properties_full_state_overrides_partial() -> None:
+    """612S always publishes the complete current command state."""
+    command = DeyeDeviceCommand(
+        power_switch=True, target_humidity=40, anion_switch=True
+    )
+    properties = resolve_fog_command_properties(
+        "07dddba41c3011e8829100163e0f811e",
+        command,
+        properties={"NegativeIon": 1},
+    )
+    assert properties == command.to_json()
+
+
+def test_resolve_fog_command_properties_generic_keeps_partial() -> None:
+    """Generic Fog products keep caller-supplied partial updates."""
+    command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
+    properties = resolve_fog_command_properties(
+        "c2c2d92c049f11e8829100163e0f811e",
+        command,
+        properties={"SetHumidity": 40},
+    )
+    assert properties == {"SetHumidity": 40}
+
+
+@pytest.mark.asyncio
+async def test_mqtt_client_for_platform() -> None:
+    """Classic uses the classic client; every other platform uses Fog."""
+    cloud_api = MagicMock(spec=DeyeCloudApi)
+    with patch("libdeye.mqtt_client.mqtt.Client", return_value=MagicMock()), patch(
+        "libdeye.mqtt_client.get_running_loop",
+        return_value=asyncio.get_running_loop(),
+    ):
+        classic = mqtt_client_for_platform(DeyeIotPlatform.Classic, cloud_api)
+        fog = mqtt_client_for_platform(DeyeIotPlatform.Fog, cloud_api)
+        combo = mqtt_client_for_platform(DeyeIotPlatform.FogCombo, cloud_api)
+        unknown = mqtt_client_for_platform(4, cloud_api)
+
+    assert isinstance(classic, DeyeClassicMqttClient)
+    assert isinstance(fog, DeyeFogMqttClient)
+    assert isinstance(combo, DeyeFogMqttClient)
+    assert isinstance(unknown, DeyeFogMqttClient)

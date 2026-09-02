@@ -6,6 +6,7 @@ from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties
 from .const import (
     DeyeDeviceMode,
     DeyeFanSpeed,
+    get_product_feature_config,
 )
 from .device_command import DeyeDeviceCommand
 
@@ -13,7 +14,11 @@ from .device_command import DeyeDeviceCommand
 class DeyeDeviceState:
     """A class to store the device state."""
 
-    def __init__(self, state: str | DeyeApiResponseFogPlatformDeviceProperties) -> None:
+    def __init__(
+        self,
+        state: str | DeyeApiResponseFogPlatformDeviceProperties,
+        product_id: str | None = None,
+    ) -> None:
         self.anion_switch: bool = False
         self.water_pump_switch: bool = False
         self.power_switch: bool = False
@@ -38,7 +43,7 @@ class DeyeDeviceState:
         if isinstance(state, str):
             self._parse_state_classic(state)
         else:
-            self._parse_state_fog(state)
+            self._parse_state_fog(state, product_id)
 
     def _parse_state_classic(self, state: str) -> None:
         state_hex = bytes.fromhex(state)
@@ -79,7 +84,9 @@ class DeyeDeviceState:
         self._exhaust_temperature = state_hex[17] - 40
 
     def _parse_state_fog(
-        self, state: DeyeApiResponseFogPlatformDeviceProperties
+        self,
+        state: DeyeApiResponseFogPlatformDeviceProperties,
+        product_id: str | None = None,
     ) -> None:
         self.anion_switch = bool(state["NegativeIon"])
         self.water_pump_switch = bool(state["WaterPump"])
@@ -89,6 +96,14 @@ class DeyeDeviceState:
         self.defrosting = bool(state["Demisting"])
         self.water_tank_full = bool(state["WaterTank"])
         self.fan_running = bool(state["Fan"])
+        if (
+            product_id
+            and not get_product_feature_config(product_id)["fan_reports_running_state"]
+        ):
+            # Some models (e.g. DYD-P40) expose Fan as a static capability
+            # flag that stays 1 while powered off. CompressorStatus tracks
+            # whether the unit is actually running.
+            self.fan_running = bool(state.get("CompressorStatus", 0))
         self.fan_speed = DeyeFanSpeed(state.get("WindSpeed", DeyeFanSpeed.STOPPED))
         self.mode = DeyeDeviceMode(state.get("Mode", DeyeDeviceMode.SLEEP_MODE))
         self.target_humidity = state.get("SetHumidity", 60)
