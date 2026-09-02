@@ -52,9 +52,9 @@ class DeyeDeviceState:
         self.target_humidity: int = 60
         self.environment_temperature: int = 27
         self.environment_humidity: int = 27
-        self.uv_switch: bool | None = None
-        self.prompt_sound: bool | None = None
-        self.screen_display: bool | None = None
+        self.uv_switch: bool = False
+        self.prompt_sound: bool = False
+        self.screen_display: bool = False
         self.timed_off_hour: int | None = None
         # Unused attributes
         self._electromagnetic_state: bool = False
@@ -128,9 +128,9 @@ class DeyeDeviceState:
         # Unused attributes
         self._coil_temperature = state.get("CurrentCoilTemperature", 27)
         self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
-        self.uv_switch = _optional_flag(state.get("UV"))
-        self.prompt_sound = _optional_flag(state.get("PromptSound"))
-        self.screen_display = _optional_flag(state.get("Screendisplay"))
+        self.uv_switch = _optional_flag(state.get("UV")) or False
+        self.prompt_sound = _optional_flag(state.get("PromptSound")) or False
+        self.screen_display = _optional_flag(state.get("Screendisplay")) or False
         timed_off = state.get("TimedOffHour", state.get("TimedShutdownHourSetting"))
         self.timed_off_hour = _optional_int(timed_off)
 

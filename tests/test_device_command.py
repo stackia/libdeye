@@ -100,6 +100,9 @@ def test_deye_device_command_to_json() -> None:
         "NegativeIon": 0,
         "SwingingWind": 0,
         "WaterPump": 0,
+        "UV": 0,
+        "PromptSound": 0,
+        "Screendisplay": 0,
     }
 
     assert command.to_json() == expected_json
@@ -116,6 +119,9 @@ def test_deye_device_command_to_json_all_on() -> None:
         fan_speed=DeyeFanSpeed.HIGH,
         mode=DeyeDeviceMode.CLOTHES_DRYER_MODE,
         target_humidity=70,
+        uv_switch=True,
+        prompt_sound=True,
+        screen_display=True,
     )
 
     expected_json = {
@@ -127,6 +133,9 @@ def test_deye_device_command_to_json_all_on() -> None:
         "NegativeIon": 1,
         "SwingingWind": 1,
         "WaterPump": 1,
+        "UV": 1,
+        "PromptSound": 1,
+        "Screendisplay": 1,
     }
 
     assert command.to_json() == expected_json
@@ -145,6 +154,9 @@ def test_deye_device_command_to_json_all_off() -> None:
         "NegativeIon": 0,
         "SwingingWind": 0,
         "WaterPump": 0,
+        "UV": 0,
+        "PromptSound": 0,
+        "Screendisplay": 0,
     }
 
     assert command.to_json() == expected_json
@@ -200,8 +212,8 @@ def test_deye_device_command_to_json_diff_from_state() -> None:
     assert command.to_json_diff(state) == {"Power": 1}
 
 
-def test_deye_device_command_to_json_diff_new_optional_extras() -> None:
-    """Newly set Fog extras diff against a baseline that never had them."""
+def test_deye_device_command_to_json_diff_first_class_and_timed_off() -> None:
+    """UV/prompt/screen always serialize; timed-off still diffs when newly set."""
     from typing import cast
 
     from libdeye.cloud_api import DeyeApiResponseFogPlatformDeviceProperties
@@ -216,7 +228,6 @@ def test_deye_device_command_to_json_diff_new_optional_extras() -> None:
     )
     assert command.to_json_diff(baseline) == {
         "UV": 1,
-        "PromptSound": 0,
         "Screendisplay": 1,
         "TimedOffHour": 2,
     }
@@ -243,8 +254,14 @@ def test_deye_device_command_to_json_diff_new_optional_extras() -> None:
             },
         )
     )
-    assert state.uv_switch is None
-    assert DeyeDeviceCommand(uv_switch=False).to_json_diff(state) == {"UV": 0}
+    assert state.uv_switch is False
+    assert state.prompt_sound is False
+    assert state.screen_display is False
+    assert DeyeDeviceCommand(uv_switch=False).to_json_diff(state) == {}
+    assert DeyeDeviceCommand(uv_switch=True).to_json_diff(state) == {"UV": 1}
+    assert DeyeDeviceCommand(timed_off_hour=2).to_json_diff(state) == {
+        "TimedOffHour": 2
+    }
 
     both_on = DeyeDeviceCommand(uv_switch=True)
     assert both_on.to_json_diff(DeyeDeviceCommand(uv_switch=True)) == {}
@@ -403,9 +420,13 @@ def test_encode_fog_combo_frame_matches_official_command_manger() -> None:
     ]
 
 
-def test_deye_device_command_optional_fog_fields() -> None:
-    """Fog extras are omitted until set, then appear in JSON and Classic timer byte."""
+def test_deye_device_command_fog_json_fields() -> None:
+    """UV/prompt/screen are always in Fog JSON; timed-off is omitted until set."""
     command = DeyeDeviceCommand()
+    assert command.to_json()["UV"] == 0
+    assert command.to_json()["PromptSound"] == 0
+    assert command.to_json()["Screendisplay"] == 0
+    assert "TimedOffHour" not in command.to_json()
     assert "Sleep" not in command.to_json()
     assert "SetTemperature" not in command.to_json()
     assert command.to_bytes()[5] == 0

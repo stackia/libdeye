@@ -5,10 +5,12 @@ Changelog
 Unreleased
 ==========
 
-- ``DeyeDeviceCommand.to_json_diff`` includes newly set Fog extras when the
-  baseline omitted them (``None``), so callers do not need to synthesize a
-  baseline for the first UV / prompt sound / screen display / timed-off
-  toggle.
+- Treat UV, prompt sound, and screen display as first-class ``bool``
+  fields on ``DeyeDeviceCommand`` / ``DeyeDeviceState`` (default
+  ``False``, always present in Fog JSON), matching child lock and anion.
+  Timed-off hour remains optional and is omitted when unset.
+- ``DeyeDeviceCommand.to_json_diff`` uses ``.get`` so a newly set
+  optional ``TimedOffHour`` still diffs when the baseline omitted it.
 
 Version 3.0.1
 =============

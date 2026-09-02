@@ -23,17 +23,17 @@ class DeyeDeviceCommand:
         mode: DeyeDeviceMode = DeyeDeviceMode.MANUAL_MODE,
         target_humidity: int = 60,
         *,
-        uv_switch: bool | None = None,
-        prompt_sound: bool | None = None,
-        screen_display: bool | None = None,
+        uv_switch: bool = False,
+        prompt_sound: bool = False,
+        screen_display: bool = False,
         timed_off_hour: int | None = None,
     ) -> None:
         """Initialize the command with the desired device settings.
 
-        Extra Fog keys (UV, prompt sound, screen display, timed-off hour)
-        default to ``None`` and are omitted from JSON, matching official
-        ``sendCommand`` skipping null params. Sleep is
-        ``DeyeDeviceMode.SLEEP_MODE``.
+        UV, prompt sound, and screen display are first-class bools like
+        child lock and anion (default ``False``, always in Fog JSON).
+        Timed-off hour defaults to ``None`` and is omitted from JSON when
+        unset. Sleep is ``DeyeDeviceMode.SLEEP_MODE``.
         """
         self.anion_switch = anion_switch
         self.water_pump_switch = water_pump_switch
@@ -111,13 +111,10 @@ class DeyeDeviceCommand:
             "NegativeIon": int(self.anion_switch),
             "SwingingWind": int(self.oscillating_switch),
             "WaterPump": int(self.water_pump_switch),
+            "UV": int(self.uv_switch),
+            "PromptSound": int(self.prompt_sound),
+            "Screendisplay": int(self.screen_display),
         }
-        if self.uv_switch is not None:
-            payload["UV"] = int(self.uv_switch)
-        if self.prompt_sound is not None:
-            payload["PromptSound"] = int(self.prompt_sound)
-        if self.screen_display is not None:
-            payload["Screendisplay"] = int(self.screen_display)
         if self.timed_off_hour is not None:
             payload["TimedOffHour"] = self.timed_off_hour
         return payload
@@ -127,11 +124,10 @@ class DeyeDeviceCommand:
     ) -> dict[str, int]:
         """Get JSON with only properties that differ from the baseline.
 
-        Optional Fog extras omitted as ``None`` are absent from both JSON
-        payloads. A newly set extra is therefore included, matching official
-        ``sendCommand`` posting a key only after the user action or cache
-        has a value. Callers do not need to invent a baseline for first
-        toggles.
+        UV, prompt sound, and screen display are always serialized, like
+        anion. Optional ``TimedOffHour`` is omitted when unset; ``.get``
+        still treats a missing baseline key as a difference so the first
+        set value is published without a placeholder.
         """
         baseline_command = (
             baseline

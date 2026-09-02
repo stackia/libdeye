@@ -1035,8 +1035,8 @@ def test_resolve_fog_command_payloads_display_tone_timer_are_single_keys() -> No
     ) == [{"TimedOffHour": 3}]
 
 
-def test_resolve_fog_command_payloads_first_optional_extra_toggle() -> None:
-    """A newly set extra is posted when the baseline never had that key."""
+def test_resolve_fog_command_payloads_uv_toggle() -> None:
+    """Turning UV on diffs only UV, like anion."""
     payloads = resolve_fog_command_payloads(
         DeyeDeviceCommand(uv_switch=True),
         baseline=DeyeDeviceCommand(),

@@ -338,9 +338,9 @@ def test_print_device_state() -> None:
     mock_state.child_lock_switch = False
     mock_state.water_tank_full = False
     mock_state.defrosting = False
-    mock_state.uv_switch = None
-    mock_state.prompt_sound = None
-    mock_state.screen_display = None
+    mock_state.uv_switch = False
+    mock_state.prompt_sound = False
+    mock_state.screen_display = False
     mock_state.timed_off_hour = None
 
     with patch("sys.stdout") as mock_stdout:
@@ -358,11 +358,11 @@ def test_print_device_state() -> None:
         assert "Water Pump: Off" in output
         assert "Oscillating: On" in output
         assert "Child Lock: Off" in output
+        assert "UV: Off" in output
+        assert "Prompt Sound: Off" in output
+        assert "Screen Display: Off" in output
         assert "Water Tank Full: No" in output
         assert "Defrosting: No" in output
-        assert "UV:" not in output
-        assert "Prompt Sound:" not in output
-        assert "Screen Display:" not in output
         assert "Timed Off Hour:" not in output
 
 
