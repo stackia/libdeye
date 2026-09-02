@@ -1,12 +1,131 @@
 [build-system]
-# AVOID CHANGING REQUIRES: IT WILL BE UPDATED BY PYSCAFFOLD!
-requires = ["setuptools>=46.1.0", "setuptools_scm[toml]>=5"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.27", "hatch-vcs"]
+build-backend = "hatchling.build"
 
-[tool.setuptools_scm]
-# For smarter version schemes and other configuration options,
-# check out https://github.com/pypa/setuptools_scm
+[project]
+name = "libdeye"
+description = "A Python library to connect to Deye Cloud (德业云) and control Deye (德业) dehumidifier/humidifier devices."
+readme = "README.rst"
+license = "MIT"
+license-files = ["LICENSE.txt"]
+authors = [
+    { name = "Stackie Jia", email = "jsq2627@gmail.com" },
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Home Automation",
+]
+dependencies = [
+    "aiohttp>=3.8,<4.0",
+    "PyJWT>=2.0,<3.0",
+    "paho-mqtt>=1.6,<3",
+]
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/stackia/libdeye/"
+Source = "https://github.com/stackia/libdeye/"
+Changelog = "https://libdeye.readthedocs.io/en/latest/changelog.html"
+Tracker = "https://github.com/stackia/libdeye/issues"
+
+[project.scripts]
+deye-cli = "libdeye.cli:main"
+
+[dependency-groups]
+dev = [
+    { include-group = "test" },
+    "mypy",
+    "pre-commit",
+]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-asyncio",
+    "aioresponses",
+    # Match the aiohttp version used by Home Assistant 2026.7.4.
+    "aiohttp==3.14.3",
+]
+docs = [
+    "sphinx>=3.2.1",
+]
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.version.raw-options]
 version_scheme = "no-guess-dev"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/libdeye"]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+addopts = [
+    "--cov",
+    "libdeye",
+    "--cov-report",
+    "term-missing",
+    "--verbose",
+]
+norecursedirs = ["dist", "build", ".tox"]
+testpaths = ["tests"]
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.coverage.run]
+branch = true
+source = ["libdeye"]
+
+[tool.coverage.paths]
+source = [
+    "src/",
+    "*/site-packages/",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self\\.debug",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+]
+
+[tool.mypy]
+python_version = "3.13"
+exclude = ["docs"]
+show_error_codes = true
+local_partial_types = true
+strict_equality = true
+strict_bytes = true
+no_implicit_optional = true
+warn_incomplete_stub = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+enable_error_code = ["deprecated", "ignore-without-code", "redundant-self", "truthy-iterable"]
+disable_error_code = ["annotation-unchecked", "import-not-found", "import-untyped"]
+extra_checks = false
+check_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_subclassing_any = true
+disallow_untyped_calls = true
+disallow_untyped_decorators = true
+disallow_untyped_defs = true
+warn_return_any = true
+warn_unreachable = true
+no_implicit_reexport = true
+disallow_any_generics = true
