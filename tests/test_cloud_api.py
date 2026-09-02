@@ -1,6 +1,7 @@
 """Tests for the Deye Cloud API module."""
 
 from collections.abc import AsyncGenerator, Generator
+import re
 import time
 from unittest.mock import MagicMock, patch
 
@@ -563,7 +564,7 @@ async def test_get_fog_platform_mqtt_info(
     }
 
     mock_aioresponse.get(
-        f"{DEYE_API_END_USER_ENDPOINT}/fogmqttinfo/",
+        re.compile(rf"{re.escape(DEYE_API_END_USER_ENDPOINT)}/fogmqttinfo/\?random=.+"),
         status=200,
         payload=mock_response,
     )
@@ -630,7 +631,10 @@ async def test_get_fog_platform_device_properties(
     }
 
     mock_aioresponse.get(
-        f"{DEYE_API_END_USER_ENDPOINT}/get/properties/?device_id={device_id}",
+        re.compile(
+            rf"{re.escape(DEYE_API_END_USER_ENDPOINT)}/get/properties/"
+            rf"\?device_id={device_id}&random=.+"
+        ),
         status=200,
         payload=mock_response,
     )

@@ -32,6 +32,7 @@ from libdeye.mqtt_client import (
     DeyeFogComboMqttClient,
     DeyeFogMqttClient,
     mqtt_client_for_device,
+    resolve_fog_command_payloads,
     resolve_fog_command_properties,
 )
 
@@ -518,6 +519,26 @@ class TestDeyeFogComboMqttClient:
                 )
                 mock_publish.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_publish_command_sleep_mode_uses_mode_opcode(
+        self, combo_client: DeyeFogComboMqttClient
+    ) -> None:
+        """Sleep is Mode=6 (opcode 8), not Combo Sleep opcode 15."""
+        command = DeyeDeviceCommand(mode=DeyeDeviceMode.SLEEP_MODE)
+        with patch.object(combo_client._mqtt, "is_connected", return_value=True):
+            with patch.object(combo_client._mqtt, "publish") as mock_publish:
+                await combo_client.publish_command(
+                    "744b6884fb294936b4f73f427507aaa3",
+                    "device456",
+                    command,
+                )
+                payloads = [
+                    call_args[0][1] for call_args in mock_publish.call_args_list
+                ]
+                assert bytes([2, 17, 8, int(DeyeDeviceMode.SLEEP_MODE)]) in payloads
+                assert bytes([2, 17, 15, 1]) not in payloads
+                assert bytes([2, 17, 15, 0]) not in payloads
+
 
 class TestDeyeFogMqttClient:
     """Tests for the DeyeFogMqttClient class."""
@@ -616,6 +637,67 @@ class TestDeyeFogMqttClient:
             mock_subscribe_topic.assert_called_once()
             topic = mock_subscribe_topic.call_args[0][0]
             assert topic == fog_client._topic
+
+    def test_subscribe_state_change_parses_thing_property(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """thing_property payloads become DeyeDeviceState; other biz codes are ignored."""
+        received: list[DeyeDeviceState] = []
+        with patch.object(fog_client, "_subscribe_topic") as mock_subscribe_topic:
+            fog_client.subscribe_state_change(
+                "product123", "device456", received.append
+            )
+            on_payload = mock_subscribe_topic.call_args[0][1]
+
+        properties = {
+            "Power": 1,
+            "Mode": 6,
+            "WindSpeed": 1,
+            "SetHumidity": 45,
+            "NegativeIon": 0,
+            "WaterPump": 0,
+            "SwingingWind": 0,
+            "KeyLock": 0,
+            "Demisting": 0,
+            "WaterTank": 0,
+            "Fan": 1,
+            "UV": 1,
+            "PromptSound": 0,
+            "Screendisplay": 1,
+            "TimedOffHour": 3,
+            "ProtocolVersion": 0,
+        }
+        on_payload(
+            {
+                "device_id": "other",
+                "biz_code": "device_data",
+                "data": {"message_type": "thing_property", "properties": properties},
+            }
+        )
+        on_payload({"device_id": "device456", "biz_code": "device_status", "data": {}})
+        on_payload(
+            {
+                "device_id": "device456",
+                "biz_code": "device_data",
+                "data": {"message_type": "status", "properties": properties},
+            }
+        )
+        assert received == []
+
+        on_payload(
+            {
+                "device_id": "device456",
+                "biz_code": "device_data",
+                "data": {"message_type": "thing_property", "properties": properties},
+            }
+        )
+        assert len(received) == 1
+        assert received[0].mode is DeyeDeviceMode.SLEEP_MODE
+        assert received[0].uv_switch is True
+        assert received[0].prompt_sound is False
+        assert received[0].screen_display is True
+        assert received[0].timed_off_hour == 3
+        assert fog_client._fog_last_properties["device456"]["UV"] == 1
 
     def test_subscribe_availability_change(self, fog_client: DeyeFogMqttClient) -> None:
         """Test subscribe_availability_change method."""
@@ -739,17 +821,24 @@ class TestDeyeFogMqttClient:
         ).set_fog_platform_device_properties.assert_not_awaited()
 
     @pytest.mark.asyncio
-    async def test_publish_command_sends_full_state_when_protocol_version_is_zero(
+    async def test_publish_command_sends_official_v0_companions(
         self, fog_client: DeyeFogMqttClient
     ) -> None:
-        """Official FogDeviceManager.checkNeedAll uses ProtocolVersion == 0."""
-        command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
+        """ProtocolVersion 0 uses sendHumidityCommand companions, not a key union."""
+        command = DeyeDeviceCommand(
+            power_switch=True,
+            target_humidity=45,
+            oscillating_switch=True,
+        )
         fog_client._fog_protocol_versions["device456"] = 0
         fog_client._fog_last_properties["device456"] = {
             "Power": 0,
             "SetHumidity": 50,
             "Sleep": 1,
             "UV": 0,
+            "SwingingWind": 1,
+            "PromptSound": 1,
+            "Screendisplay": 1,
             "TimedShutdownHourSetting": 2,
         }
 
@@ -760,16 +849,17 @@ class TestDeyeFogMqttClient:
             properties={"SetHumidity": 45},
         )
 
-        published = command.to_json() | {
-            "Sleep": 1,
-            "UV": 0,
-            "TimedOffHour": 2,
-        }
-        cast(
+        published = cast(
             MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            "device456", published
-        )
+        ).set_fog_platform_device_properties.await_args.args[1]
+        assert published["SetHumidity"] == 45
+        assert published["Power"] == 1
+        assert published["UV"] == 0
+        assert published["TimedOffHour"] == 2
+        assert published["SwingingWind"] == 1
+        assert "Sleep" not in published
+        assert "PromptSound" not in published
+        assert "Screendisplay" not in published
 
     @pytest.mark.asyncio
     async def test_query_device_state_caches_protocol_version(
@@ -825,8 +915,8 @@ def test_resolve_fog_command_properties_protocol_version_zero_skips_unchanged() 
     assert properties == {}
 
 
-def test_resolve_fog_command_properties_protocol_version_zero_sends_full() -> None:
-    """Official checkNeedAll: ProtocolVersion == 0 sends every current param."""
+def test_resolve_fog_command_properties_protocol_version_zero_without_cache() -> None:
+    """Missing cache makes checkNeedAll false, so only the changed key is sent."""
     command = DeyeDeviceCommand(
         power_switch=True, target_humidity=40, anion_switch=True
     )
@@ -835,12 +925,20 @@ def test_resolve_fog_command_properties_protocol_version_zero_sends_full() -> No
         properties={"SetHumidity": 40},
         protocol_version=0,
     )
-    assert properties == command.to_json()
+    assert properties == {"SetHumidity": 40}
 
 
-def test_resolve_fog_command_properties_protocol_version_zero_merges_cache() -> None:
-    """ProtocolVersion == 0 overlays command fields on the last GET snapshot."""
-    command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
+def test_resolve_fog_command_properties_protocol_version_zero_uses_command_companions() -> (
+    None
+):
+    """ProtocolVersion == 0 humidity snapshot omits Sleep and PromptSound."""
+    command = DeyeDeviceCommand(
+        power_switch=True,
+        target_humidity=40,
+        oscillating_switch=False,
+        prompt_sound=True,
+        screen_display=True,
+    )
     properties = resolve_fog_command_properties(
         command,
         properties={"SetHumidity": 40},
@@ -864,13 +962,116 @@ def test_resolve_fog_command_properties_protocol_version_zero_merges_cache() -> 
     )
     assert properties["Power"] == 1
     assert properties["SetHumidity"] == 40
-    assert properties["Sleep"] == 1
     assert properties["UV"] == 0
-    assert properties["SetTemperature"] == 26
-    assert properties["PromptSound"] == 1
-    assert properties["Screendisplay"] == 1
     assert properties["TimedOffHour"] == 3
+    assert properties["SwingingWind"] == 0
+    assert "Sleep" not in properties
+    assert "SetTemperature" not in properties
+    assert "PromptSound" not in properties
+    assert "Screendisplay" not in properties
     assert "TimedShutdownHourSetting" not in properties
+
+
+def test_resolve_fog_command_payloads_power_omits_swinging_wind() -> None:
+    """Official sendPowerCommand does not include SwingingWind."""
+    command = DeyeDeviceCommand(power_switch=True, oscillating_switch=True)
+    payloads = resolve_fog_command_payloads(
+        command,
+        properties={"Power": 1},
+        protocol_version=0,
+        last_properties={
+            "Power": 0,
+            "SwingingWind": 1,
+            "Mode": 0,
+            "WindSpeed": 1,
+            "SetHumidity": 50,
+            "KeyLock": 0,
+            "NegativeIon": 0,
+            "WaterPump": 0,
+            "Sleep": 1,
+            "UV": 0,
+        },
+    )
+    assert len(payloads) == 1
+    assert payloads[0]["Power"] == 1
+    assert payloads[0]["Sleep"] == 1
+    assert payloads[0]["UV"] == 0
+    assert "SwingingWind" not in payloads[0]
+
+
+def test_resolve_fog_command_payloads_display_tone_timer_are_single_keys() -> None:
+    """Display, tone, and timer commands never use checkNeedAll companions."""
+    command = DeyeDeviceCommand(
+        screen_display=True, prompt_sound=False, timed_off_hour=3
+    )
+    last = {
+        "Power": 1,
+        "Mode": 0,
+        "WindSpeed": 1,
+        "SetHumidity": 50,
+        "Sleep": 1,
+        "UV": 1,
+        "Screendisplay": 0,
+        "PromptSound": 1,
+        "TimedOffHour": 0,
+    }
+    assert resolve_fog_command_payloads(
+        command,
+        properties={"Screendisplay": 1},
+        protocol_version=0,
+        last_properties=last,
+    ) == [{"Screendisplay": 1}]
+    assert resolve_fog_command_payloads(
+        command,
+        properties={"PromptSound": 0},
+        protocol_version=0,
+        last_properties=last,
+    ) == [{"PromptSound": 0}]
+    assert resolve_fog_command_payloads(
+        command,
+        properties={"TimedOffHour": 3},
+        protocol_version=0,
+        last_properties=last,
+    ) == [{"TimedOffHour": 3}]
+
+
+def test_resolve_fog_command_payloads_batches_into_official_posts() -> None:
+    """Each changed key is one FogDeviceManager command POST."""
+    baseline = DeyeDeviceCommand(power_switch=False, target_humidity=50)
+    command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
+    payloads = resolve_fog_command_payloads(
+        command,
+        baseline=baseline,
+        protocol_version=0,
+        last_properties={
+            "Power": 0,
+            "SetHumidity": 50,
+            "Mode": 0,
+            "WindSpeed": 1,
+            "KeyLock": 0,
+            "NegativeIon": 0,
+            "WaterPump": 0,
+            "SwingingWind": 0,
+            "Sleep": 1,
+            "UV": 0,
+        },
+    )
+    assert len(payloads) == 2
+    assert payloads[0]["Power"] == 1
+    assert "SwingingWind" not in payloads[0]
+    assert payloads[1]["SetHumidity"] == 40
+    assert "Sleep" not in payloads[1]
+
+
+def test_resolve_fog_command_payloads_unknown_key_passthrough() -> None:
+    """Keys without an official command still post as a single-property body."""
+    payloads = resolve_fog_command_payloads(
+        DeyeDeviceCommand(),
+        properties={"Custom": 9},
+        protocol_version=0,
+        last_properties={"Power": 1},
+    )
+    assert payloads == [{"Custom": 9}]
 
 
 def test_resolve_fog_command_properties_protocol_version_nonzero_keeps_partial() -> (

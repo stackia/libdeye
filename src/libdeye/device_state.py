@@ -8,6 +8,29 @@ from .const import DeyeDeviceMode, DeyeFanSpeed
 from .device_command import DeyeDeviceCommand
 
 
+def _optional_int(value: object) -> int | None:
+    """Parse an optional Fog integer, or None when the key is missing."""
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.lstrip("-").isdigit():
+            return int(stripped)
+    return None
+
+
+def _optional_flag(value: object) -> bool | None:
+    """Parse an optional Fog 0/1 flag."""
+    parsed = _optional_int(value)
+    if parsed is None:
+        return None
+    return bool(parsed)
+
+
 class DeyeDeviceState:
     """A class to store the device state."""
 
@@ -29,6 +52,10 @@ class DeyeDeviceState:
         self.target_humidity: int = 60
         self.environment_temperature: int = 27
         self.environment_humidity: int = 27
+        self.uv_switch: bool | None = None
+        self.prompt_sound: bool | None = None
+        self.screen_display: bool | None = None
+        self.timed_off_hour: int | None = None
         # Unused attributes
         self._electromagnetic_state: bool = False
         self._press_state: bool = False
@@ -101,6 +128,11 @@ class DeyeDeviceState:
         # Unused attributes
         self._coil_temperature = state.get("CurrentCoilTemperature", 27)
         self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
+        self.uv_switch = _optional_flag(state.get("UV"))
+        self.prompt_sound = _optional_flag(state.get("PromptSound"))
+        self.screen_display = _optional_flag(state.get("Screendisplay"))
+        timed_off = state.get("TimedOffHour", state.get("TimedShutdownHourSetting"))
+        self.timed_off_hour = _optional_int(timed_off)
 
     def copy(self) -> DeyeDeviceState:
         """Return an independent copy of this state."""
@@ -119,6 +151,10 @@ class DeyeDeviceState:
             self.fan_speed,
             self.mode,
             self.target_humidity,
+            uv_switch=self.uv_switch,
+            prompt_sound=self.prompt_sound,
+            screen_display=self.screen_display,
+            timed_off_hour=self.timed_off_hour,
         )
 
     @override
@@ -144,6 +180,10 @@ class DeyeDeviceState:
             and self.target_humidity == other.target_humidity
             and self.environment_temperature == other.environment_temperature
             and self.environment_humidity == other.environment_humidity
+            and self.uv_switch == other.uv_switch
+            and self.prompt_sound == other.prompt_sound
+            and self.screen_display == other.screen_display
+            and self.timed_off_hour == other.timed_off_hour
         )
 
 

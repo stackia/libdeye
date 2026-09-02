@@ -89,19 +89,30 @@ no product-id branch on the send path.
 
 - Send: HTTP POST `set/properties` (`DeYeFogMqttManager.sendSingleMsg` is
   not an MQTT publish).
-- Query: HTTP GET `enduser/get/properties/`.
+- Query: HTTP GET `enduser/get/properties/?device_id=...&random=...`.
+  Official Retrofit also sends `random` on `fogmqttinfo/`.
 - Receive: MQTT `fogcloud/app/{username}/sub` (`device_data` /
   `device_status`) only. `SubscribeDeviceStates.registerDevice` returns
   immediately for Fog and does not subscribe Classic `status/hex`.
 - `FogDeviceManager.checkNeedAll`: cached `ProtocolVersion == 0` sends
-  every current param; missing/null cache is partial. GET reports
-  `TimedShutdownHourSetting`; the send key is `TimedOffHour`.
+  that command's companion keys from the cached bean (not every key).
+  `sendPowerCommand` omits `SwingingWind`; humidity omits `Sleep` /
+  `SetTemperature`; display, tone, and timer never snapshot. Missing/null
+  cache is partial. GET reports `TimedShutdownHourSetting`; the send key
+  is `TimedOffHour`.
+- `setPollFogProperties` POSTs `{RealData: 1}` on `set/properties`.
+  `FogDevicePollingTask` repeats this every 3s while a Fog panel is open
+  so the device publishes fresh MQTT `thing_property`. It is not a GET.
 
 **Classic** (platform 1, not Combo)
 
 - Send: JSON `DehumidifierBean` → `DehumidifierBeanString2Hex` → 10-byte
   MQTT on `{endpoint}/{productId}/{deviceId}/command/hex`.
-- Query: `b"\x00\x01"` on that topic.
+- Query: `b"\x00\x01"` on that topic (`QUERY_DEVICE_STATE`). The App
+  `DeviceHeartbeatTask` repeats this every 10s for Classic devices on
+  the home list; it is a state poll, not an MQTT keepalive. `b"\x00\x04"`
+  (`DEVICE_STATE_CHANGE_COMMAND`) exists in `DeviceStateChangeTrigger`
+  but has no callers in 4.2.1.
 - Receive: `status/hex` + `online/json`.
 - The topic suffix is still `StubApp.getString2(44821)` in the APK. Live
   traffic is `/command/hex` and `/status/hex`.

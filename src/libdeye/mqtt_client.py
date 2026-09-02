@@ -43,6 +43,192 @@ FOG_SETTABLE_PROPERTY_ALIASES: tuple[tuple[str, str], ...] = (
     ("TimedOffHour", "TimedOffHour"),
 )
 
+FOG_SETTABLE_PROPERTY_ORDER: tuple[str, ...] = (
+    "KeyLock",
+    "Mode",
+    "Power",
+    "UV",
+    "WindSpeed",
+    "SetHumidity",
+    "NegativeIon",
+    "SwingingWind",
+    "WaterPump",
+    "Sleep",
+    "SetTemperature",
+    "PromptSound",
+    "Screendisplay",
+    "TimedOffHour",
+)
+
+# Companion keys copied from the cached bean when ProtocolVersion == 0.
+# Primary command key is applied separately. Matches FogDeviceManager
+# send*Command checkNeedAll blocks, including keys those methods omit
+# (for example sendPowerCommand does not send SwingingWind).
+FOG_PROTOCOL_V0_COMPANIONS: dict[str, frozenset[str]] = {
+    "Power": frozenset(
+        {
+            "KeyLock",
+            "UV",
+            "Mode",
+            "SetHumidity",
+            "WindSpeed",
+            "NegativeIon",
+            "WaterPump",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "WindSpeed": frozenset(
+        {
+            "UV",
+            "KeyLock",
+            "Mode",
+            "SetHumidity",
+            "Power",
+            "NegativeIon",
+            "WaterPump",
+            "SwingingWind",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "Mode": frozenset(
+        {
+            "UV",
+            "KeyLock",
+            "Power",
+            "SetHumidity",
+            "WindSpeed",
+            "NegativeIon",
+            "WaterPump",
+            "SwingingWind",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "SetHumidity": frozenset(
+        {
+            "UV",
+            "KeyLock",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "NegativeIon",
+            "WaterPump",
+            "SwingingWind",
+            "TimedOffHour",
+        }
+    ),
+    "SetTemperature": frozenset(
+        {
+            "KeyLock",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "NegativeIon",
+            "WaterPump",
+            "SwingingWind",
+            "Sleep",
+            "TimedOffHour",
+        }
+    ),
+    "KeyLock": frozenset(
+        {
+            "UV",
+            "SetHumidity",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "NegativeIon",
+            "WaterPump",
+            "SwingingWind",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "NegativeIon": frozenset(
+        {
+            "UV",
+            "SetHumidity",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "KeyLock",
+            "WaterPump",
+            "SwingingWind",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "UV": frozenset(
+        {
+            "NegativeIon",
+            "SetHumidity",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "KeyLock",
+            "WaterPump",
+            "SwingingWind",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "SwingingWind": frozenset(
+        {
+            "UV",
+            "SetHumidity",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "KeyLock",
+            "WaterPump",
+            "NegativeIon",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "WaterPump": frozenset(
+        {
+            "UV",
+            "SetHumidity",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "KeyLock",
+            "SwingingWind",
+            "NegativeIon",
+            "Sleep",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "Sleep": frozenset(
+        {
+            "SetHumidity",
+            "Power",
+            "Mode",
+            "WindSpeed",
+            "KeyLock",
+            "SwingingWind",
+            "NegativeIon",
+            "WaterPump",
+            "SetTemperature",
+            "TimedOffHour",
+        }
+    ),
+    "Screendisplay": frozenset(),
+    "PromptSound": frozenset(),
+    "TimedOffHour": frozenset(),
+}
+
 
 def _int_property(value: object) -> int | None:
     """Parse a Fog property value the way official toIntOrNull does."""
@@ -69,19 +255,33 @@ def fog_full_snapshot_from_properties(properties: dict[str, Any]) -> dict[str, i
     return snapshot
 
 
-def resolve_fog_command_properties(
+def _fog_v0_payload_for_key(
+    primary: str,
+    value: int,
     command: DeyeDeviceCommand,
-    properties: dict[str, int] | None = None,
-    baseline: FogCommandBaseline | None = None,
-    protocol_version: int | None = None,
-    last_properties: dict[str, Any] | None = None,
+    last_properties: dict[str, Any],
 ) -> dict[str, int]:
-    """Build the Fog HTTP property payload.
+    """Build one official ProtocolVersion 0 set/properties body."""
+    companions = FOG_PROTOCOL_V0_COMPANIONS.get(primary)
+    if companions is None:
+        return {primary: value}
 
-    Official FogDeviceManager.checkNeedAll sends every current param when
-    cached ``ProtocolVersion == 0``; otherwise only the changed property.
-    Missing or null cache is partial (checkNeedAll is false).
-    """
+    values = fog_full_snapshot_from_properties(last_properties)
+    values.update(command.to_json())
+    payload: dict[str, int] = {primary: value}
+    for key in companions:
+        if key in values:
+            payload[key] = values[key]
+    payload[primary] = value
+    return payload
+
+
+def _changed_fog_properties(
+    command: DeyeDeviceCommand,
+    properties: dict[str, int] | None,
+    baseline: FogCommandBaseline | None,
+) -> dict[str, int]:
+    """Return the Fog keys that should be sent for this apply."""
     if baseline is not None:
         baseline_command = (
             baseline
@@ -91,20 +291,65 @@ def resolve_fog_command_properties(
         if command == baseline_command:
             return {}
 
-    if protocol_version == 0:
-        snapshot = (
-            fog_full_snapshot_from_properties(last_properties)
-            if last_properties
-            else {}
-        )
-        snapshot.update(command.to_json())
-        return snapshot
-
     if properties is not None:
         return dict(properties)
     if baseline is not None:
         return command.to_json_diff(baseline)
     return command.to_json()
+
+
+def resolve_fog_command_payloads(
+    command: DeyeDeviceCommand,
+    properties: dict[str, int] | None = None,
+    baseline: FogCommandBaseline | None = None,
+    protocol_version: int | None = None,
+    last_properties: dict[str, Any] | None = None,
+) -> list[dict[str, int]]:
+    """Build Fog HTTP POST bodies matching FogDeviceManager.
+
+    ``ProtocolVersion == 0`` with a cached bean uses each command's
+    official companion set (not a union of every cached key). Missing
+    cache is partial. Otherwise only the changed properties are sent.
+    Multiple changed keys become one POST each, like successive App taps.
+    """
+    changed = _changed_fog_properties(command, properties, baseline)
+    if not changed:
+        return []
+
+    if protocol_version != 0 or last_properties is None:
+        return [changed]
+
+    payloads: list[dict[str, int]] = []
+    remaining = dict(changed)
+    for key in FOG_SETTABLE_PROPERTY_ORDER:
+        if key not in remaining:
+            continue
+        payloads.append(
+            _fog_v0_payload_for_key(key, remaining.pop(key), command, last_properties)
+        )
+    for key, value in remaining.items():
+        payloads.append(_fog_v0_payload_for_key(key, value, command, last_properties))
+    return payloads
+
+
+def resolve_fog_command_properties(
+    command: DeyeDeviceCommand,
+    properties: dict[str, int] | None = None,
+    baseline: FogCommandBaseline | None = None,
+    protocol_version: int | None = None,
+    last_properties: dict[str, Any] | None = None,
+) -> dict[str, int]:
+    """Return the first Fog payload, or ``{}`` when nothing should be sent."""
+    payloads = resolve_fog_command_payloads(
+        command,
+        properties=properties,
+        baseline=baseline,
+        protocol_version=protocol_version,
+        last_properties=last_properties,
+    )
+    if not payloads:
+        return {}
+    return payloads[0]
 
 
 def mqtt_client_type_for_device(
@@ -489,19 +734,15 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         baseline: FogCommandBaseline | None = None,
     ) -> None:
         """Publish commands to a Fog-platform device via the cloud API."""
-        properties_to_publish = resolve_fog_command_properties(
+        payloads = resolve_fog_command_payloads(
             command,
             properties=properties,
             baseline=baseline,
             protocol_version=self._fog_protocol_versions.get(device_id),
             last_properties=self._fog_last_properties.get(device_id),
         )
-        if not properties_to_publish:
-            return
-
-        await self._cloud_api.set_fog_platform_device_properties(
-            device_id, properties_to_publish
-        )
+        for payload in payloads:
+            await self._cloud_api.set_fog_platform_device_properties(device_id, payload)
 
     @override
     async def query_device_state(

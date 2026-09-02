@@ -47,6 +47,10 @@ def test_get_product_feature_config() -> None:
     assert default_config["anion"] is True
     assert default_config["oscillating"] is False
     assert default_config["water_pump"] is False
+    assert default_config["uv"] is False
+    assert default_config["prompt_sound"] is False
+    assert default_config["screen_display"] is False
+    assert default_config["timed_off"] is False
     assert default_config["min_target_humidity"] == 25
     assert default_config["max_target_humidity"] == 80
     assert DeyeDeviceMode.MANUAL_MODE in default_config["mode"]
@@ -57,6 +61,10 @@ def test_get_product_feature_config() -> None:
     e12a3 = get_product_feature_config("c2c2d92c049f11e8829100163e0f811e")
     assert e12a3["fan_speed"] == []
     assert e12a3["anion"] is False
+    assert e12a3["uv"] is False
+    assert e12a3["prompt_sound"] is False
+    assert e12a3["screen_display"] is False
+    assert e12a3["timed_off"] is False
     assert "full_state_fog_commands" not in e12a3
 
     u20a3 = get_product_feature_config("20eae2ea268511e8829100163e0f811e")
@@ -95,6 +103,32 @@ def test_get_product_feature_config() -> None:
     assert DeyeDeviceMode.TURBO_MODE in p40["mode"]
     assert DeyeFanSpeed.FULL not in p40["fan_speed"]
     assert DeyeFanSpeed.AUTO in p40["fan_speed"]
+    assert p40["uv"] is True
+    assert p40["prompt_sound"] is True
+    assert p40["screen_display"] is True
+    assert p40["timed_off"] is False
+
+    a10 = get_product_feature_config("744b6884fb294936b4f73f427507aaa3")
+    assert a10["uv"] is False
+    assert a10["prompt_sound"] is True
+    assert a10["screen_display"] is True
+    assert a10["timed_off"] is True
+    assert DeyeDeviceMode.SLEEP_MODE in a10["mode"]
+
+    p30 = get_product_feature_config("be8f5e6a893111f0aebc0242ac480009")
+    assert p30["oscillating"] is True
+    assert p30["anion"] is False
+    assert p30["prompt_sound"] is True
+    assert p30["screen_display"] is True
+    assert p30["timed_off"] is True
+    assert DeyeDeviceMode.SLEEP_MODE in p30["mode"]
+
+    c65dz = get_product_feature_config("7faf2a66c8b811efb3a50242ac480009")
+    assert c65dz["uv"] is True
+    assert c65dz["prompt_sound"] is False
+    assert c65dz["screen_display"] is False
+    assert c65dz["timed_off"] is False
+    assert DeyeDeviceMode.AIR_PURIFIER_MODE in c65dz["mode"]
 
     tm208 = get_product_feature_config("6f97c340a43011e7829100163e0f811e")
     assert tm208["oscillating"] is True

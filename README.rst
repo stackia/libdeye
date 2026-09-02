@@ -58,6 +58,9 @@ Supported devices:
 * DY-Y16A3
 * DY-SC60Y
 * DYD-P40
+* A10
+* DYD-P30
+* DY-C65DZ/A
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py>`_.
 
@@ -204,7 +207,7 @@ Available Commands
 - ``devices``: List devices on the account, including IoT platform and command transport (``CLASSIC``, ``FOG``, or ``COMBO``)
 - ``products``: List all available product types
 - ``get``: Query current state via ``DeyeClient`` (Classic MQTT poll, Fog HTTP GET, or Combo MQTT poll)
-- ``set``: Send a command via ``DeyeClient.apply`` (power, mode, fan speed, humidity, anion, water pump, oscillating, child lock)
+- ``set``: Send a command via ``DeyeClient.apply`` (power, mode, fan speed, humidity, anion, water pump, oscillating, child lock, plus optional Fog sleep / UV / temperature / prompt sound / screen display / timed-off hour)
 - ``monitor``: Subscribe to MQTT state and availability updates
 - ``print-token``: Print the authentication token for use in .env file
 - ``refresh-token``: Force refresh the authentication token
@@ -231,8 +234,27 @@ platform MQTT clients yourself.
 
 Call ``refresh()`` or ``ensure_connected()`` before ``subscribe()``.
 Send commands with ``device.apply(command, baseline=...)``. Fog devices
-with cached ``ProtocolVersion == 0`` send a full property snapshot;
-otherwise only changed fields are posted.
+with cached ``ProtocolVersion == 0`` send the official companion snapshot
+for each changed property (not a union of every cached key); otherwise
+only changed fields are posted.
+
+``DeyeDeviceCommand`` also carries Fog extras that official dehumidifier
+product JSON optionally defines: ``uv_switch``, ``prompt_sound``,
+``screen_display``, and ``timed_off_hour``.
+
+The product JSON (``uvLight``, ``tone``, ``displayScreen``,
+``hasDelayer``) only shows or hides those controls, the same way it
+gates anion and oscillating. Use ``get_product_feature_config`` (``uv``,
+``prompt_sound``, ``screen_display``, ``timed_off``) to decide whether a
+product advertises them. If it does, callers should expose the matching
+command/state fields.
+
+The Fog send path does not invent values. ``FogDeviceManager.sendCommand``
+posts a key only when the cached bean or the user action set it.
+``ProtocolVersion == 0`` companions copy ``UV`` and ``TimedOffHour`` from
+cache when present; display, tone, and timer commands stay single-key.
+Unset library fields stay ``None`` and are omitted from Fog JSON. Sleep is
+``DeyeDeviceMode.SLEEP_MODE``.
 
 .. code-block:: python
 

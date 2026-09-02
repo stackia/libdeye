@@ -148,6 +148,71 @@ def test_deye_device_state_parse_fog() -> None:
     assert state.environment_humidity == 55
 
 
+def test_deye_device_state_parse_fog_optional_controls() -> None:
+    """Fog GET extras map onto optional command fields."""
+    fog_state: dict[str, object] = {
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "Power": 1,
+        "SwingingWind": 0,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "WaterTank": 0,
+        "Fan": 1,
+        "WindSpeed": 1,
+        "Mode": 0,
+        "SetHumidity": 45,
+        "Sleep": "1",
+        "UV": 0.0,
+        "SetTemperature": "26",
+        "PromptSound": 1,
+        "Screendisplay": 0,
+        "TimedShutdownHourSetting": "4",
+    }
+    state = DeyeDeviceState(cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state))
+    assert not hasattr(state, "sleep_switch")
+    assert not hasattr(state, "target_temperature")
+    assert state.mode is DeyeDeviceMode.MANUAL_MODE
+    assert state.uv_switch is False
+    assert state.prompt_sound is True
+    assert state.screen_display is False
+    assert state.timed_off_hour == 4
+    command = state.to_command()
+    assert not hasattr(command, "sleep_switch")
+    assert not hasattr(command, "target_temperature")
+    assert command.mode is DeyeDeviceMode.MANUAL_MODE
+    assert command.uv_switch is False
+    assert command.timed_off_hour == 4
+    assert "Sleep" not in command.to_json()
+    assert "SetTemperature" not in command.to_json()
+
+    invalid = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {**fog_state, "UV": "nope", "Sleep": True, "TimedOffHour": 1.5},
+        )
+    )
+    assert invalid.uv_switch is None
+    assert invalid.timed_off_hour is None
+
+    bool_uv = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {**fog_state, "UV": True, "TimedOffHour": "  7 "},
+        )
+    )
+    assert bool_uv.uv_switch is None
+    assert bool_uv.timed_off_hour == 7
+
+    preferred_timer = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {**fog_state, "TimedOffHour": 2, "TimedShutdownHourSetting": "9"},
+        )
+    )
+    assert preferred_timer.timed_off_hour == 2
+
+
 def test_deye_device_state_copy() -> None:
     """Test copy() returns an independent state."""
     state = DeyeDeviceState("14118100113B00000000000000000040300000000000")

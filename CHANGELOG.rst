@@ -2,6 +2,24 @@
 Changelog
 =========
 
+Version 3.0.1
+=============
+
+- Align Fog ``ProtocolVersion == 0`` payloads with official
+  ``FogDeviceManager`` per-command companion keys instead of posting a
+  union of every cached property (for example power commands no longer
+  include ``SwingingWind``).
+- Add ``?random=`` cache-busting query params on Fog GET properties and
+  Fog MQTT-info, matching official Retrofit / ``DeYeHttpRequestManager``.
+- ``DeyeDevice.request_refresh()`` on Fog POSTs official ``RealData: 1``
+  (``setPollFogProperties``) instead of blocking on GET.
+- Expose Fog extras on ``DeyeDeviceCommand`` / ``DeyeDeviceState``: UV,
+  prompt sound, screen display, and timed-off hour. Sleep is
+  ``DeyeDeviceMode.SLEEP_MODE``; target temperature is not supported.
+- Map official dehumidifier JSON ``uvLight``, ``tone``, ``displayScreen``,
+  and ``hasDelayer`` onto product config ``uv``, ``prompt_sound``,
+  ``screen_display``, and ``timed_off``.
+
 Version 3.0.0
 =============
 

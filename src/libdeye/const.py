@@ -46,6 +46,10 @@ class DeyeProductConfig(TypedDict):
     anion: bool
     oscillating: bool
     water_pump: bool
+    uv: bool
+    prompt_sound: bool
+    screen_display: bool
+    timed_off: bool
 
 
 class DeyeProductPartialConfig(TypedDict, total=False):
@@ -58,10 +62,17 @@ class DeyeProductPartialConfig(TypedDict, total=False):
     anion: bool
     oscillating: bool
     water_pump: bool
+    uv: bool
+    prompt_sound: bool
+    screen_display: bool
+    timed_off: bool
 
 
 # Mapped from official Deye Smart 4.2.1 ``control_panel/dehumidifier/*.json``.
 # Products without a dedicated JSON keep their previously known UI capabilities.
+# ``uv`` / ``prompt_sound`` / ``screen_display`` / ``timed_off`` inherit False
+# unless a product JSON defines ``uvLight``, ``tone``, ``displayScreen``, or
+# ``hasDelayer``.
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
     "d71936c6951c11f0a8200242ac480009": {  # DYD-P40
         "mode": [
@@ -82,6 +93,10 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "anion": True,
         "oscillating": True,
         "water_pump": False,
+        "uv": True,
+        "prompt_sound": True,
+        "screen_display": True,
+        "timed_off": False,
     },
     "07dddba41c3011e8829100163e0f811e": {  # 612S
         "mode": [],
@@ -590,6 +605,67 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "oscillating": False,
         "water_pump": False,
     },
+    "744b6884fb294936b4f73f427507aaa3": {  # A10
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": True,
+        "oscillating": False,
+        "water_pump": False,
+        "uv": False,
+        "prompt_sound": True,
+        "screen_display": True,
+        "timed_off": True,
+    },
+    "be8f5e6a893111f0aebc0242ac480009": {  # P30
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": False,
+        "oscillating": True,
+        "water_pump": False,
+        "uv": False,
+        "prompt_sound": True,
+        "screen_display": True,
+        "timed_off": True,
+    },
+    "7faf2a66c8b811efb3a50242ac480009": {  # C65DZ
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.HIGH,
+        ],
+        "min_target_humidity": 26,
+        "max_target_humidity": 80,
+        "anion": False,
+        "oscillating": False,
+        "water_pump": False,
+        "uv": True,
+        "prompt_sound": False,
+        "screen_display": False,
+        "timed_off": False,
+    },
 }
 
 
@@ -597,7 +673,8 @@ def get_product_feature_config(product_id: str) -> DeyeProductConfig:
     """Get supported features of the product.
 
     Unknown products use ``DeYeDehumidifierModel.json``: modes 0/1/2/3/6,
-    fan speeds 1-4, humidity 25-80, anion, no oscillating or water pump.
+    fan speeds 1-4, humidity 25-80, anion, no oscillating, water pump, UV,
+    prompt sound, screen display, or timed off.
     """
     default: DeyeProductConfig = {
         "mode": [
@@ -618,6 +695,10 @@ def get_product_feature_config(product_id: str) -> DeyeProductConfig:
         "anion": True,
         "oscillating": False,
         "water_pump": False,
+        "uv": False,
+        "prompt_sound": False,
+        "screen_display": False,
+        "timed_off": False,
     }
     try:
         return default | PRODUCT_FEATURE_CONFIG[product_id]

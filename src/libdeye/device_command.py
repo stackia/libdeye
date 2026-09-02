@@ -22,8 +22,19 @@ class DeyeDeviceCommand:
         fan_speed: DeyeFanSpeed = DeyeFanSpeed.LOW,
         mode: DeyeDeviceMode = DeyeDeviceMode.MANUAL_MODE,
         target_humidity: int = 60,
+        *,
+        uv_switch: bool | None = None,
+        prompt_sound: bool | None = None,
+        screen_display: bool | None = None,
+        timed_off_hour: int | None = None,
     ) -> None:
-        """Initialize the command with the desired device settings."""
+        """Initialize the command with the desired device settings.
+
+        Extra Fog keys (UV, prompt sound, screen display, timed-off hour)
+        default to ``None`` and are omitted from JSON, matching official
+        ``sendCommand`` skipping null params. Sleep is
+        ``DeyeDeviceMode.SLEEP_MODE``.
+        """
         self.anion_switch = anion_switch
         self.water_pump_switch = water_pump_switch
         self.power_switch = power_switch
@@ -32,6 +43,10 @@ class DeyeDeviceCommand:
         self.fan_speed = fan_speed
         self.mode = mode
         self.target_humidity = target_humidity
+        self.uv_switch = uv_switch
+        self.prompt_sound = prompt_sound
+        self.screen_display = screen_display
+        self.timed_off_hour = timed_off_hour
 
     @override
     def __eq__(self, other: object) -> bool:
@@ -48,6 +63,10 @@ class DeyeDeviceCommand:
             and self.fan_speed == other.fan_speed
             and self.mode == other.mode
             and self.target_humidity == other.target_humidity
+            and self.uv_switch == other.uv_switch
+            and self.prompt_sound == other.prompt_sound
+            and self.screen_display == other.screen_display
+            and self.timed_off_hour == other.timed_off_hour
         )
 
     def to_bytes(self) -> bytes:
@@ -64,6 +83,8 @@ class DeyeDeviceCommand:
         if self.child_lock_switch:
             command_flag |= DeyeDeviceCommandFlag.CHILD_LOCK_SWITCH
 
+        timed_off_hour = self.timed_off_hour if self.timed_off_hour is not None else 0
+
         return bytes(
             [
                 0x08,
@@ -71,7 +92,7 @@ class DeyeDeviceCommand:
                 command_flag,
                 (self.fan_speed << 4) | self.mode,
                 self.target_humidity,
-                0,
+                timed_off_hour & 0xFF,
                 0,
                 0,
                 0,
@@ -81,7 +102,7 @@ class DeyeDeviceCommand:
 
     def to_json(self) -> dict[str, int]:
         """Get JSON representation of this command."""
-        return {
+        payload: dict[str, int] = {
             "KeyLock": int(self.child_lock_switch),
             "Mode": int(self.mode),
             "Power": int(self.power_switch),
@@ -91,6 +112,15 @@ class DeyeDeviceCommand:
             "SwingingWind": int(self.oscillating_switch),
             "WaterPump": int(self.water_pump_switch),
         }
+        if self.uv_switch is not None:
+            payload["UV"] = int(self.uv_switch)
+        if self.prompt_sound is not None:
+            payload["PromptSound"] = int(self.prompt_sound)
+        if self.screen_display is not None:
+            payload["Screendisplay"] = int(self.screen_display)
+        if self.timed_off_hour is not None:
+            payload["TimedOffHour"] = self.timed_off_hour
+        return payload
 
     def to_json_diff(
         self, baseline: DeyeDeviceCommand | DeyeDeviceState
@@ -136,7 +166,6 @@ FOG_COMBO_PROPERTY_COMMANDS: dict[str, DeyeFogComboCommand] = {
     "Mode": DeyeFogComboCommand.MODE,
     "WindSpeed": DeyeFogComboCommand.FAN_SPEED,
     "SetHumidity": DeyeFogComboCommand.HUMIDITY_OR_TEMP,
-    "SetTemperature": DeyeFogComboCommand.HUMIDITY_OR_TEMP,
     "Sleep": DeyeFogComboCommand.SLEEP,
 }
 

@@ -128,6 +128,14 @@ def print_device_state(state: DeyeDeviceState) -> None:
     print(f"  Child Lock: {'On' if state.child_lock_switch else 'Off'}")
     print(f"  Water Tank Full: {'Yes' if state.water_tank_full else 'No'}")
     print(f"  Defrosting: {'Yes' if state.defrosting else 'No'}")
+    if isinstance(state.uv_switch, bool):
+        print(f"  UV: {'On' if state.uv_switch else 'Off'}")
+    if isinstance(state.prompt_sound, bool):
+        print(f"  Prompt Sound: {'On' if state.prompt_sound else 'Off'}")
+    if isinstance(state.screen_display, bool):
+        print(f"  Screen Display: {'On' if state.screen_display else 'Off'}")
+    if isinstance(state.timed_off_hour, int):
+        print(f"  Timed Off Hour: {state.timed_off_hour}")
 
 
 async def get_device_state(api: DeyeCloudApi, device_id: str) -> None:
@@ -160,6 +168,10 @@ async def set_device_state(
     water_pump: bool | None = None,
     oscillating: bool | None = None,
     child_lock: bool | None = None,
+    uv: bool | None = None,
+    prompt_sound: bool | None = None,
+    screen_display: bool | None = None,
+    timed_off_hour: int | None = None,
 ) -> None:
     """Set the state of a device."""
     client = DeyeClient(api)
@@ -189,6 +201,14 @@ async def set_device_state(
             command.oscillating_switch = oscillating
         if child_lock is not None:
             command.child_lock_switch = child_lock
+        if uv is not None:
+            command.uv_switch = uv
+        if prompt_sound is not None:
+            command.prompt_sound = prompt_sound
+        if screen_display is not None:
+            command.screen_display = screen_display
+        if timed_off_hour is not None:
+            command.timed_off_hour = timed_off_hour
 
         await device.apply(command, baseline=state)
         print(f"Command sent to device {device.name} ({device_id})")
@@ -328,6 +348,18 @@ async def run_cli(
             if args.child_lock:
                 child_lock = args.child_lock == "on"
 
+            uv = None
+            if args.uv:
+                uv = args.uv == "on"
+
+            prompt_sound = None
+            if args.prompt_sound:
+                prompt_sound = args.prompt_sound == "on"
+
+            screen_display = None
+            if args.screen_display:
+                screen_display = args.screen_display == "on"
+
             await set_device_state(
                 api,
                 cast(str, device_id),
@@ -339,6 +371,10 @@ async def run_cli(
                 water_pump=water_pump,
                 oscillating=oscillating,
                 child_lock=child_lock,
+                uv=uv,
+                prompt_sound=prompt_sound,
+                screen_display=screen_display,
+                timed_off_hour=args.timed_off_hour,
             )
         elif args.command == "monitor":
             await monitor_device(api, cast(str, device_id))
@@ -413,6 +449,18 @@ def main() -> None:
     )
     set_parser.add_argument(
         "--child-lock", choices=["on", "off"], help="Child lock state"
+    )
+    set_parser.add_argument("--uv", choices=["on", "off"], help="UV light switch")
+    set_parser.add_argument(
+        "--prompt-sound", choices=["on", "off"], help="Prompt sound (Fog HTTP)"
+    )
+    set_parser.add_argument(
+        "--screen-display", choices=["on", "off"], help="Screen display (Fog HTTP)"
+    )
+    set_parser.add_argument(
+        "--timed-off-hour",
+        type=int,
+        help="Timed-off hour setting (Fog HTTP TimedOffHour)",
     )
 
     # Monitor device command
