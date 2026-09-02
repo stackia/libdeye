@@ -5,6 +5,7 @@ Changelog
 Unreleased
 ==========
 
+- Require Python 3.14.2+ and align aiohttp, PyJWT, and paho-mqtt with Home Assistant 2026.3.0.
 - Migrate development tooling to uv.
 
 Version 2.1.3
