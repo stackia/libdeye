@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Unreleased
-==========
+Version 3.0.0
+=============
 
 - **Breaking:** Follow official Deye Smart 4.2.1 CommandManger routing from
   each device-list entry. ``platform`` 2 and 3 both use Fog HTTP. Combo MQTT

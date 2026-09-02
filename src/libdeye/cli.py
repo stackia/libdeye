@@ -374,17 +374,23 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # List devices command
-    subparsers.add_parser("devices", help="List all devices")
+    subparsers.add_parser(
+        "devices", help="List devices with platform and command transport"
+    )
 
     # List products command
     subparsers.add_parser("products", help="List all available products")
 
     # Get device state command
-    get_parser = subparsers.add_parser("get", help="Get device state")
+    get_parser = subparsers.add_parser(
+        "get", help="Get device state (Classic, Fog, or Combo)"
+    )
     get_parser.add_argument("--device-id", help="Device ID")
 
     # Set device state command
-    set_parser = subparsers.add_parser("set", help="Set device state")
+    set_parser = subparsers.add_parser(
+        "set", help="Set device state (Classic, Fog, or Combo)"
+    )
     set_parser.add_argument("--device-id", help="Device ID")
     set_parser.add_argument("--power", choices=["on", "off"], help="Power state")
     set_parser.add_argument(
@@ -394,7 +400,9 @@ def main() -> None:
         "--fan-speed", choices=[speed.name for speed in DeyeFanSpeed], help="Fan speed"
     )
     set_parser.add_argument(
-        "--target-humidity", type=int, help="Target humidity percentage (30-80)"
+        "--target-humidity",
+        type=int,
+        help="Target humidity percentage (product-specific range)",
     )
     set_parser.add_argument("--anion", choices=["on", "off"], help="Anion state")
     set_parser.add_argument(
@@ -409,7 +417,7 @@ def main() -> None:
 
     # Monitor device command
     monitor_parser = subparsers.add_parser(
-        "monitor", help="Monitor device state changes"
+        "monitor", help="Monitor MQTT state and availability"
     )
     monitor_parser.add_argument("--device-id", help="Device ID")
 
