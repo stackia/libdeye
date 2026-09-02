@@ -421,7 +421,7 @@ class BaseDeyeMqttClient(ABC):
     def _mqtt_on_connect(
         self,
         _mqtt: mqtt.Client,
-        _userdata: None,
+        _userdata: Any,
         _connect_flags: mqtt.ConnectFlags,
         _reason_code: mqtt.ReasonCode,
         _properties: mqtt.Properties | None,
@@ -437,7 +437,7 @@ class BaseDeyeMqttClient(ABC):
     def _mqtt_on_disconnect(
         self,
         _mqtt: mqtt.Client,
-        _userdata: None,
+        _userdata: Any,
         _disconnect_flags: mqtt.DisconnectFlags,
         reason_code: mqtt.ReasonCode,
         _properties: mqtt.Properties | None,
@@ -465,7 +465,7 @@ class BaseDeyeMqttClient(ABC):
                 self._loop.call_soon_threadsafe(
                     callback, self._process_message_payload(msg)
                 )
-        except json.JSONDecodeError, KeyError:
+        except (json.JSONDecodeError, KeyError):
             pass
 
     def _subscribe_topic(
