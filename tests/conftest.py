@@ -4,8 +4,8 @@ import inspect
 from typing import Any
 from unittest.mock import Mock
 
-import aioresponses.core as aioresponses_core
 from aiohttp import ClientResponse
+import aioresponses.core as aioresponses_core
 
 
 def _client_response_with_stream_writer(*args: Any, **kwargs: Any) -> ClientResponse:
@@ -17,8 +17,4 @@ def _client_response_with_stream_writer(*args: Any, **kwargs: Any) -> ClientResp
 # Remove this compatibility shim once a release containing
 # https://github.com/pnuckowski/aioresponses/pull/288 is available.
 if "stream_writer" in inspect.signature(ClientResponse).parameters:
-    setattr(
-        aioresponses_core,
-        "ClientResponse",
-        _client_response_with_stream_writer,
-    )
+    aioresponses_core.ClientResponse = _client_response_with_stream_writer  # type: ignore[misc,assignment]

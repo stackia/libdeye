@@ -30,10 +30,7 @@ from libdeye.cli import (
 from libdeye.cloud_api import DeyeCloudApi, DeyeIotPlatform
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
 from libdeye.device_state import DeyeDeviceState
-from libdeye.mqtt_client import (
-    DeyeClassicMqttClient,
-    DeyeFogMqttClient,
-)
+from libdeye.mqtt_client import DeyeClassicMqttClient, DeyeFogMqttClient
 
 
 @pytest.fixture
@@ -89,7 +86,7 @@ def test_load_env_file_with_quoted_values(tmp_path: Path) -> None:
     """Test loading environment variables with quoted values."""
     env_file = tmp_path / ".env"
     env_file.write_text(
-        'DEYE_USERNAME="quoted_user"\n' "DEYE_PASSWORD='quoted_password'\n"
+        "DEYE_USERNAME=\"quoted_user\"\nDEYE_PASSWORD='quoted_password'\n"
     )
 
     env_vars = load_env_file(str(env_file))
@@ -462,7 +459,6 @@ async def test_monitor_device() -> None:
         patch("libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client),
         patch("asyncio.Future", return_value=mock_infinite_future),
     ):
-
         # Start the monitor_device function in a task
         task = asyncio.create_task(monitor_device(mock_api, "test_device_id"))
 
@@ -674,7 +670,7 @@ def test_main_no_auth_credentials() -> None:
 
 def test_main_no_device_id() -> None:
     """Test main function with no device ID for commands that require it."""
-    for command in ["get", "set", "monitor"]:
+    for command in ("get", "set", "monitor"):
         mock_args = MagicMock()
         mock_args.command = command
         mock_args.username = "test_user"

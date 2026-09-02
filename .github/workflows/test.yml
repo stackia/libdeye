@@ -9,10 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v7
 
@@ -20,27 +16,31 @@ jobs:
         uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
-          python-version: ${{ matrix.python-version }}
+          python-version: "3.14"
 
       - name: Install the project
         run: uv sync --locked --group test --group dev
 
+      - name: Run lint
+        run: uv run pre-commit run --all-files --show-diff-on-failure
+
       - name: Run type check
-        if: matrix.python-version == '3.13'
         run: uv run mypy .
+
+      - name: Run pylint
+        run: uv run pylint src/libdeye tests
 
       - name: Run tests
         run: uv run pytest --cov-report xml --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload test results to Codecov
-        if: ${{ !cancelled() && matrix.python-version == '3.13' }}
+        if: ${{ !cancelled() }}
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           report_type: test_results
 
       - name: Upload coverage to Codecov
-        if: matrix.python-version == '3.13'
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

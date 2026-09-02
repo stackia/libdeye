@@ -137,8 +137,8 @@ Implement your changes
 
    Please make sure to see the validation messages from |pre-commit|_ and fix
    any eventual issues.
-   This should automatically use flake8_/black_ to check/fix the code style
-   in a way that is compatible with the project.
+   This should automatically use ruff_ to check/fix the code style
+   in a way that is compatible with Home Assistant core.
 
    .. important:: Don't forget to add unit tests and documentation in case your
       contribution adds an additional feature and is not just a bugfix.
@@ -156,7 +156,9 @@ Implement your changes
 
    Other common tasks:
 
+   * Lint: ``uv run pre-commit run --all-files``
    * Type check: ``uv run mypy .``
+   * Pylint: ``uv run pylint src/libdeye tests``
    * Build docs: ``uv run --group docs sphinx-build -b html docs docs/_build/html``
    * Build distributions: ``uv build``
 
@@ -200,7 +202,7 @@ package:
     uv run --group docs sphinx-build -b html docs docs/_build/html
 
 #. Make sure uv is using the Python version pinned in ``.python-version``
-   (currently 3.13). When in doubt you can run::
+   (currently 3.14). When in doubt you can run::
 
     uv python pin
     uv run python --version
@@ -257,12 +259,11 @@ on PyPI_, the following steps can be used to release a new version for
 .. |uv| replace:: ``uv``
 
 
-.. _black: https://pypi.org/project/black/
+.. _ruff: https://docs.astral.sh/ruff/
 .. _contribution-guide.org: https://www.contribution-guide.org/
 .. _creating a PR: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
 .. _descriptive commit message: https://chris.beams.io/posts/git-commit
 .. _docstrings: https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
-.. _flake8: https://flake8.pycqa.org/en/stable/
 .. _git: https://git-scm.com
 .. _guide created by FreeCodeCamp: https://github.com/FreeCodeCamp/how-to-contribute-to-open-source
 .. _other kinds of contributions: https://opensource.guide/how-to-contribute

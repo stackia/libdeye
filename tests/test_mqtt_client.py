@@ -1,8 +1,9 @@
 """Tests for the MQTT client module."""
 
 import asyncio
+from collections.abc import Callable
 import json
-from typing import Any, Callable, cast
+from typing import Any, cast, override
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import paho.mqtt.client as mqtt
@@ -35,14 +36,16 @@ class TestBaseDeyeMqttClient:
         _mqtt_host = "test.mqtt.host"
         _mqtt_ssl_port = 8883
 
+        @override
         async def _set_mqtt_info(self) -> None:
             """Mock implementation of _set_mqtt_info."""
-            pass
 
+        @override
         def _process_message_payload(self, msg: mqtt.MQTTMessage) -> Any:
             """Mock implementation of _process_message_payload."""
             return json.loads(msg.payload)
 
+        @override
         def subscribe_state_change(
             self,
             product_id: str,
@@ -52,6 +55,7 @@ class TestBaseDeyeMqttClient:
             """Mock implementation of subscribe_state_change."""
             return lambda: None
 
+        @override
         def subscribe_availability_change(
             self,
             product_id: str,
@@ -61,6 +65,7 @@ class TestBaseDeyeMqttClient:
             """Mock implementation of subscribe_availability_change."""
             return lambda: None
 
+        @override
         async def publish_command(
             self,
             product_id: str,
@@ -69,8 +74,8 @@ class TestBaseDeyeMqttClient:
             properties: dict[str, int] | None = None,
         ) -> None:
             """Mock implementation of publish_command."""
-            pass
 
+        @override
         async def query_device_state(
             self, product_id: str, device_id: str
         ) -> DeyeDeviceState:
@@ -95,8 +100,7 @@ class TestBaseDeyeMqttClient:
                 "libdeye.mqtt_client.get_running_loop",
                 return_value=asyncio.get_running_loop(),
             ):
-                client = TestBaseDeyeMqttClient.MockBaseDeyeMqttClient(cloud_api_mock)
-                return client
+                return TestBaseDeyeMqttClient.MockBaseDeyeMqttClient(cloud_api_mock)
 
     @pytest.mark.asyncio
     async def test_connect(self, base_client: MockBaseDeyeMqttClient) -> None:
@@ -374,17 +378,17 @@ class TestDeyeClassicMqttClient:
             callback(state)
             return MagicMock()
 
-        with patch.object(
-            classic_client, "subscribe_state_change", side_effect=mock_subscribe
+        with (
+            patch.object(
+                classic_client, "subscribe_state_change", side_effect=mock_subscribe
+            ),
+            patch.object(classic_client, "publish_command") as mock_publish_command,
         ):
-            with patch.object(
-                classic_client, "publish_command"
-            ) as mock_publish_command:
-                result = await classic_client.query_device_state(product_id, device_id)
-                mock_publish_command.assert_called_once_with(
-                    product_id, device_id, QUERY_DEVICE_STATE_COMMAND_CLASSIC
-                )
-                assert isinstance(result, DeyeDeviceState)
+            result = await classic_client.query_device_state(product_id, device_id)
+            mock_publish_command.assert_called_once_with(
+                product_id, device_id, QUERY_DEVICE_STATE_COMMAND_CLASSIC
+            )
+            assert isinstance(result, DeyeDeviceState)
 
 
 class TestDeyeFogMqttClient:
