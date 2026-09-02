@@ -3,12 +3,13 @@
 
 import argparse
 import asyncio
-import logging
-import sys
 from datetime import datetime
+import logging
+import os
 from pathlib import Path
 from signal import SIGINT, SIGTERM
-from typing import Optional, cast
+import sys
+from typing import cast
 
 import aiohttp
 
@@ -21,6 +22,13 @@ from .const import DeyeDeviceMode, DeyeFanSpeed
 from .device_state import DeyeDeviceState
 from .mqtt_client import BaseDeyeMqttClient, mqtt_client_for_platform
 
+CONFIG_ENV_KEYS = (
+    "DEYE_USERNAME",
+    "DEYE_PASSWORD",
+    "DEYE_AUTH_TOKEN",
+    "DEYE_DEVICE_ID",
+)
+
 
 def load_env_file(env_file: str = ".env") -> dict[str, str]:
     """Load environment variables from a .env file."""
@@ -28,7 +36,7 @@ def load_env_file(env_file: str = ".env") -> dict[str, str]:
     env_path = Path(env_file)
 
     if env_path.exists():
-        with open(env_path, "r") as f:
+        with env_path.open(encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line or line.startswith("#"):
@@ -39,11 +47,27 @@ def load_env_file(env_file: str = ".env") -> dict[str, str]:
     return env_vars
 
 
+def load_config(env_file: str = ".env") -> dict[str, str]:
+    """Load configuration from a .env file and process environment variables.
+
+    Process environment variables take precedence over values from the .env
+    file, matching the default behavior of python-dotenv and 12-factor app
+    conventions. Command-line arguments are applied separately and take
+    precedence over both.
+    """
+    config = load_env_file(env_file)
+    for key in CONFIG_ENV_KEYS:
+        value = os.environ.get(key)
+        if value is not None:
+            config[key] = value
+    return config
+
+
 async def authenticate(
     session: aiohttp.ClientSession,
     username: str,
     password: str,
-    auth_token: Optional[str] = None,
+    auth_token: str | None = None,
 ) -> DeyeCloudApi:
     """Authenticate with Deye Cloud API."""
     api = DeyeCloudApi(session, username, password, auth_token)
@@ -136,7 +160,7 @@ async def get_device_state(api: DeyeCloudApi, device_id: str) -> None:
         print(f"Device State for {device_info['device_name']} ({device_id}):")
         print_device_state(state)
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         print(
             f"Timeout waiting for device state for {device_info['device_name']} ({device_id})"
         )
@@ -148,14 +172,14 @@ async def get_device_state(api: DeyeCloudApi, device_id: str) -> None:
 async def set_device_state(
     api: DeyeCloudApi,
     device_id: str,
-    power: Optional[bool] = None,
-    mode: Optional[DeyeDeviceMode] = None,
-    fan_speed: Optional[DeyeFanSpeed] = None,
-    target_humidity: Optional[int] = None,
-    anion: Optional[bool] = None,
-    water_pump: Optional[bool] = None,
-    oscillating: Optional[bool] = None,
-    child_lock: Optional[bool] = None,
+    power: bool | None = None,
+    mode: DeyeDeviceMode | None = None,
+    fan_speed: DeyeFanSpeed | None = None,
+    target_humidity: int | None = None,
+    anion: bool | None = None,
+    water_pump: bool | None = None,
+    oscillating: bool | None = None,
+    child_lock: bool | None = None,
 ) -> None:
     """Set the state of a device."""
     # Get device info to determine platform
@@ -210,7 +234,7 @@ async def set_device_state(
 
         print(f"Command sent to device {device_info['device_name']} ({device_id})")
 
-    except asyncio.TimeoutError:
+    except TimeoutError:
         print(
             f"Timeout waiting for device state for {device_info['device_name']} ({device_id})"
         )
@@ -258,7 +282,7 @@ async def monitor_device(api: DeyeCloudApi, device_id: str) -> None:
     try:
         print(f"Monitoring device {device_info['device_name']} ({device_id})...")
         infinite_future: asyncio.Future[None] = asyncio.Future()
-        for signal in [SIGINT, SIGTERM]:
+        for signal in (SIGINT, SIGTERM):
             asyncio.get_running_loop().add_signal_handler(
                 signal, infinite_future.set_result, None
             )
@@ -318,8 +342,8 @@ async def run_cli(
     args: argparse.Namespace,
     username: str,
     password: str,
-    auth_token: Optional[str],
-    device_id: Optional[str],
+    auth_token: str | None,
+    device_id: str | None,
 ) -> None:
     """Run the CLI with the given arguments."""
     # Create a single aiohttp session for the entire lifetime of the CLI
@@ -394,7 +418,7 @@ def main() -> None:
     parser.add_argument(
         "--env-file",
         default=".env",
-        help="Path to .env file (default: .env in current directory)",
+        help="Path to .env file used as defaults when environment variables are unset (default: .env)",
     )
 
     # Authentication options
@@ -480,10 +504,9 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
-    # Load environment variables from .env file
-    env_vars = load_env_file(args.env_file)
+    # CLI args > process environment variables > .env file
+    env_vars = load_config(args.env_file)
 
-    # Get username and password from command line args or .env file
     username = args.username or env_vars.get("DEYE_USERNAME")
     password = args.password or env_vars.get("DEYE_PASSWORD")
     auth_token = args.token or env_vars.get("DEYE_AUTH_TOKEN")
@@ -491,13 +514,15 @@ def main() -> None:
     # Check if authentication credentials were provided
     if not auth_token and (not username or not password):
         print("Error: You must provide either a token or username and password")
-        print("       via command line arguments or in the .env file.")
+        print(
+            "       via command line arguments, environment variables, or a .env file."
+        )
         print(
             "       Expected environment variables: DEYE_USERNAME, DEYE_PASSWORD, or DEYE_AUTH_TOKEN"
         )
         sys.exit(1)
 
-    # Get device ID from command line args or .env file
+    # Get device ID from command line args, environment, or .env file
     device_id = None
 
     if args.command in ["get", "set", "monitor"]:
@@ -505,7 +530,8 @@ def main() -> None:
 
         if not device_id:
             print(
-                "Error: You must provide device ID via command line arguments or in the .env file."
+                "Error: You must provide device ID via command line arguments, "
+                "environment variables, or a .env file."
             )
             print("       Expected environment variables: DEYE_DEVICE_ID")
             sys.exit(1)

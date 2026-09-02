@@ -1,6 +1,3 @@
-.. image:: https://img.shields.io/badge/-PyScaffold-005CA0?logo=pyscaffold
-    :alt: Project generated with PyScaffold
-    :target: https://pyscaffold.org/
 .. image:: https://results.pre-commit.ci/badge/github/stackia/libdeye/main.svg
     :target: https://results.pre-commit.ci/latest/github/stackia/libdeye/main
     :alt: pre-commit.ci status
@@ -79,6 +76,9 @@ The CLI tool is automatically installed when you install the library:
 
     pip install libdeye
 
+    # or
+    uv add libdeye
+
 Usage
 -----
 
@@ -120,10 +120,28 @@ Usage
     # Force refresh the authentication token
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD refresh-token
 
-Using .env File
----------------
+Using Environment Variables and .env Files
+------------------------------------------
 
-You can store your credentials in a .env file to avoid typing them in each command:
+Credentials can be provided via command-line arguments, process environment
+variables, or a ``.env`` file. Precedence (highest to lowest):
+
+1. Command-line arguments (``--username``, ``--password``, ``--token``, ``--device-id``)
+2. Process environment variables (``DEYE_USERNAME``, ``DEYE_PASSWORD``, ...)
+3. Values from a ``.env`` file
+
+This matches the default behavior of python-dotenv and 12-factor app conventions:
+``.env`` is a local default, and already-set environment variables are not overwritten.
+
+You can export variables in your shell:
+
+.. code-block:: bash
+
+    export DEYE_USERNAME=your_username
+    export DEYE_PASSWORD=your_password
+    deye-cli devices
+
+Or store them in a .env file to avoid typing them in each command:
 
 .. code-block:: bash
 
@@ -137,7 +155,7 @@ You can store your credentials in a .env file to avoid typing them in each comma
     # You can also specify a different .env file location
     deye-cli --env-file /path/to/your/.env devices
 
-The .env file format is simple:
+The supported variable names (used by both the environment and .env files) are:
 
 .. code-block:: text
 
@@ -148,7 +166,7 @@ The .env file format is simple:
     # Optional: store device and product IDs for quick access
     DEYE_DEVICE_ID=your_device_id
 
-With device and product IDs in your .env file, you can simplify commands:
+With device and product IDs configured, you can simplify commands:
 
 .. code-block:: bash
 

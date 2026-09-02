@@ -1,12 +1,12 @@
-"""MQTT related stuffs"""
+"""MQTT related stuffs."""
 
-import asyncio
-import json
 from abc import ABC, abstractmethod
+import asyncio
 from asyncio import Future, get_running_loop
 from collections.abc import Callable
+import json
 from ssl import SSLContext
-from typing import Any, cast
+from typing import Any, cast, override
 
 import paho.mqtt.client as mqtt
 
@@ -115,8 +115,11 @@ class BaseDeyeMqttClient(ABC):
         cloud_api: DeyeCloudApi,
         tls_context: SSLContext | None = None,
     ) -> None:
+        """Initialize the MQTT client."""
         self._loop = get_running_loop()
         self._cloud_api = cloud_api
+        self._endpoint = ""
+        self._topic = ""
         self._mqtt = mqtt.Client()
         if tls_context is not None:
             self._mqtt.tls_set_context(tls_context)
@@ -185,7 +188,7 @@ class BaseDeyeMqttClient(ABC):
                 self._loop.call_soon_threadsafe(
                     callback, self._process_message_payload(msg)
                 )
-        except (json.JSONDecodeError, KeyError):
+        except json.JSONDecodeError, KeyError:
             pass
 
     def _subscribe_topic(
@@ -236,7 +239,7 @@ class BaseDeyeMqttClient(ABC):
         properties: dict[str, int] | None = None,
         baseline: FogCommandBaseline | None = None,
     ) -> None:
-        """Publish commands to a device"""
+        """Publish commands to a device."""
         raise NotImplementedError
 
     @abstractmethod
@@ -253,6 +256,7 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
     def _get_topic_prefix(self, product_id: str, device_id: str) -> str:
         return f"{self._endpoint}/{product_id}/{device_id}"
 
+    @override
     async def _set_mqtt_info(self) -> None:
         mqtt_info = await self._cloud_api.get_deye_platform_mqtt_info()
         self._mqtt_host = mqtt_info["mqtthost"]
@@ -260,10 +264,12 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
         self._mqtt.username_pw_set(mqtt_info["loginname"], mqtt_info["password"])
         self._endpoint = mqtt_info["endpoint"]
 
+    @override
     def _process_message_payload(self, msg: mqtt.MQTTMessage) -> Any:
         """Process the message payload for Classic platform."""
         return json.loads(msg.payload)["data"]
 
+    @override
     def subscribe_state_change(
         self,
         product_id: str,
@@ -276,6 +282,7 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
             lambda payload: callback(DeyeDeviceState(payload, product_id=product_id)),
         )
 
+    @override
     def subscribe_availability_change(
         self,
         product_id: str,
@@ -291,12 +298,14 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
     def _publish_command_bytes(
         self, product_id: str, device_id: str, command_bytes: bytes
     ) -> None:
+        """Publish Classic MQTT command bytes, or queue them if disconnected."""
         topic = f"{self._get_topic_prefix(product_id, device_id)}/command/hex"
         if self._mqtt.is_connected():
             self._mqtt.publish(topic, command_bytes)
         else:
             self._pending_commands.append((topic, command_bytes))
 
+    @override
     async def publish_command(
         self,
         product_id: str,
@@ -305,12 +314,13 @@ class DeyeClassicMqttClient(BaseDeyeMqttClient):
         properties: dict[str, int] | None = None,
         baseline: FogCommandBaseline | None = None,
     ) -> None:
-        """Publish commands to a device"""
+        """Publish commands to a device."""
         command_bytes = (
             command.to_bytes() if isinstance(command, DeyeDeviceCommand) else command
         )
         self._publish_command_bytes(product_id, device_id, command_bytes)
 
+    @override
     async def query_device_state(
         self, product_id: str, device_id: str
     ) -> DeyeDeviceState:
@@ -340,6 +350,7 @@ class DeyeFogComboMqttClient(DeyeClassicMqttClient):
     Receive/query stay on Classic ``status/hex`` and ``\\x00\\x01``.
     """
 
+    @override
     async def publish_command(
         self,
         product_id: str,
@@ -367,21 +378,25 @@ class DeyeFogComboMqttClient(DeyeClassicMqttClient):
 class DeyeFogMqttClient(BaseDeyeMqttClient):
     """MQTT client for the Fog platform."""
 
+    @override
     def __init__(
         self,
         cloud_api: DeyeCloudApi,
         tls_context: SSLContext | None = None,
     ) -> None:
+        """Initialize the Fog MQTT client and ProtocolVersion cache."""
         super().__init__(cloud_api, tls_context)
         self._fog_protocol_versions: dict[str, int] = {}
 
     def _remember_fog_protocol_version(
         self, device_id: str, properties: dict[str, Any]
     ) -> None:
+        """Cache ProtocolVersion from Fog GET/MQTT property payloads."""
         protocol_version = properties.get("ProtocolVersion")
         if protocol_version is not None:
             self._fog_protocol_versions[device_id] = int(protocol_version)
 
+    @override
     async def _set_mqtt_info(self) -> None:
         mqtt_info = await self._cloud_api.get_fog_platform_mqtt_info()
         self._mqtt_host = mqtt_info["mqtt_host"]
@@ -389,10 +404,12 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         self._mqtt.username_pw_set(mqtt_info["username"], mqtt_info["password"])
         self._topic = f"fogcloud/app/{mqtt_info['username']}/sub"
 
+    @override
     def _process_message_payload(self, msg: mqtt.MQTTMessage) -> Any:
         """Process the message payload for Fog platform."""
         return json.loads(msg.payload)
 
+    @override
     def subscribe_state_change(
         self,
         product_id: str,
@@ -419,6 +436,7 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
 
         return self._subscribe_topic(self._topic, on_payload)
 
+    @override
     def subscribe_availability_change(
         self,
         product_id: str,
@@ -436,6 +454,7 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
             ),
         )
 
+    @override
     async def publish_command(
         self,
         product_id: str,
@@ -444,10 +463,7 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
         properties: dict[str, int] | None = None,
         baseline: FogCommandBaseline | None = None,
     ) -> None:
-        """
-        For Fog platform, commands are not published via MQTT.
-        Instead, use the cloud API to send commands.
-        """
+        """Publish commands to a Fog-platform device via the cloud API."""
         feature_config = get_product_feature_config(product_id)
         properties_to_publish = resolve_fog_command_properties(
             product_id,
@@ -476,6 +492,7 @@ class DeyeFogMqttClient(BaseDeyeMqttClient):
             device_id, properties_to_publish
         )
 
+    @override
     async def query_device_state(
         self, product_id: str, device_id: str
     ) -> DeyeDeviceState:

@@ -62,9 +62,9 @@ that any documentation update is done in the same way was a code contribution.
     submit your proposal.
 
 When working on documentation changes in your local machine, you can
-compile them using |tox|_::
+compile them using |uv|_::
 
-    tox -e docs
+    uv run --group docs sphinx-build -b html docs docs/_build/html
 
 and use Python's built-in web server for a preview in your web browser
 (``http://localhost:8000``)::
@@ -82,21 +82,6 @@ Before you work on any non-trivial code contribution it's best to first create
 a report in the `issue tracker`_ to start a discussion on the subject.
 This often provides additional considerations and avoids unnecessary work.
 
-Create an environment
----------------------
-
-Before you start coding, we recommend creating an isolated `virtual
-environment`_ to avoid any problems with your installed Python packages.
-This can easily be done via either |virtualenv|_::
-
-    virtualenv <PATH TO VENV>
-    source <PATH TO VENV>/bin/activate
-
-or Miniconda_::
-
-    conda create -n libdeye python=3 six virtualenv pytest pytest-cov
-    conda activate libdeye
-
 Clone the repository
 --------------------
 
@@ -108,18 +93,26 @@ Clone the repository
     git clone git@github.com:stackia/libdeye.git
     cd libdeye
 
-#. You should run::
+Create an environment
+---------------------
 
-    pip install -U pip setuptools -e .[dev]
+This project uses |uv|_ to manage Python versions, a project virtual
+environment, and locked dependencies. Install uv from
+https://docs.astral.sh/uv/getting-started/installation/, then from the
+repository root run::
 
-   to be able to import the package under development in the Python REPL.
+    uv sync
 
-#. Setup |pre-commit|_::
+``uv sync`` creates ``.venv``, installs the project in editable mode, and
+installs the default ``dev`` dependency group from ``uv.lock``.
+After that, ``uv run python`` can import the package under development.
 
-    pre-commit install
+Setup |pre-commit|_::
 
-   ``libdeye`` comes with a lot of hooks configured to automatically help the
-   developer to check the code being written.
+    uv run pre-commit install
+
+``libdeye`` comes with a lot of hooks configured to automatically help the
+developer to check the code being written.
 
 Implement your changes
 ----------------------
@@ -144,8 +137,8 @@ Implement your changes
 
    Please make sure to see the validation messages from |pre-commit|_ and fix
    any eventual issues.
-   This should automatically use flake8_/black_ to check/fix the code style
-   in a way that is compatible with the project.
+   This should automatically use ruff_ to check/fix the code style
+   in a way that is compatible with Home Assistant core.
 
    .. important:: Don't forget to add unit tests and documentation in case your
       contribution adds an additional feature and is not just a bugfix.
@@ -159,12 +152,15 @@ Implement your changes
 
 #. Please check that your changes don't break any unit tests with::
 
-    tox
+    uv run pytest
 
-   (after having installed |tox|_ with ``pip install tox`` or ``pipx``).
+   Other common tasks:
 
-   You can also use |tox|_ to run several other pre-configured tasks in the
-   repository. Try ``tox -av`` to see a list of the available checks.
+   * Lint: ``uv run pre-commit run --all-files``
+   * Type check: ``uv run mypy .``
+   * Pylint: ``uv run pylint src/libdeye tests``
+   * Build docs: ``uv run --group docs sphinx-build -b html docs docs/_build/html``
+   * Build distributions: ``uv build``
 
 Submit your contribution
 ------------------------
@@ -191,40 +187,29 @@ package:
    The command ``git describe --abbrev=0 --tags`` should return the version you
    are expecting. If you are trying to run CI scripts in a fork repository,
    make sure to push all the tags.
-   You can also try to remove all the egg files or the complete egg folder, i.e.,
-   ``.eggs``, as well as the ``*.egg-info`` folders in the ``src`` folder or
-   potentially in the root of your project.
+   Recreate the environment with ``uv sync --reinstall`` if the local
+   checkout looks stale.
 
-#. Sometimes |tox|_ misses out when new dependencies are added, especially to
-   ``setup.cfg`` and ``docs/requirements.txt``. If you find any problems with
-   missing dependencies when running a command with |tox|_, try to recreate the
-   ``tox`` environment using the ``-r`` flag. For example, instead of::
+#. If a newly added dependency is missing after editing ``pyproject.toml``,
+   refresh the lockfile and environment::
 
-    tox -e docs
+    uv lock
+    uv sync
 
-   Try running::
+   To rebuild documentation after changing the ``docs`` group::
 
-    tox -r -e docs
+    uv sync --group docs
+    uv run --group docs sphinx-build -b html docs docs/_build/html
 
-#. Make sure to have a reliable |tox|_ installation that uses the correct
-   Python version (e.g., 3.7+). When in doubt you can run::
+#. Make sure uv is using the Python version pinned in ``.python-version``
+   (currently 3.14). When in doubt you can run::
 
-    tox --version
-    # OR
-    which tox
-
-   If you have trouble and are seeing weird errors upon running |tox|_, you can
-   also try to create a dedicated `virtual environment`_ with a |tox|_ binary
-   freshly installed. For example::
-
-    virtualenv .venv
-    source .venv/bin/activate
-    .venv/bin/pip install tox
-    .venv/bin/tox -e all
+    uv python pin
+    uv run python --version
 
 #. `Pytest can drop you`_ in an interactive session in the case an error occurs.
    In order to do that you need to pass a ``--pdb`` option (for example by
-   running ``tox -- -k <NAME OF THE FALLING TEST> --pdb``).
+   running ``uv run pytest -k <NAME OF THE FALLING TEST> --pdb``).
    You can also setup breakpoints manually instead of using the ``--pdb`` option.
 
 
@@ -244,14 +229,13 @@ on PyPI_, the following steps can be used to release a new version for
 #. Make sure all unit tests are successful.
 #. Tag the current commit on the main branch with a release tag, e.g., ``v1.2.3``.
 #. Push the new tag to the upstream repository_, e.g., ``git push upstream v1.2.3``
-#. Clean up the ``dist`` and ``build`` folders with ``tox -e clean``
-   (or ``rm -rf dist build``)
+#. Clean up the ``dist`` and ``build`` folders (``rm -rf dist build``)
    to avoid confusion with old builds and Sphinx docs.
-#. Run ``tox -e build`` and check that the files in ``dist`` have
+#. Run ``uv build --no-sources`` and check that the files in ``dist`` have
    the correct version (no ``.dirty`` or git_ hash) according to the git_ tag.
    Also check the sizes of the distributions, if they are too big (e.g., >
    500KB), unwanted clutter may have been accidentally included.
-#. Run ``tox -e publish -- --repository pypi`` and check that everything was
+#. Run ``uv publish`` and check that everything was
    uploaded to PyPI_ correctly.
 
 
@@ -271,35 +255,24 @@ on PyPI_, the following steps can be used to release a new version for
 .. <-- end -->
 
 
-.. |virtualenv| replace:: ``virtualenv``
 .. |pre-commit| replace:: ``pre-commit``
-.. |tox| replace:: ``tox``
+.. |uv| replace:: ``uv``
 
 
-.. _black: https://pypi.org/project/black/
-.. _CommonMark: https://commonmark.org/
+.. _ruff: https://docs.astral.sh/ruff/
 .. _contribution-guide.org: https://www.contribution-guide.org/
 .. _creating a PR: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
 .. _descriptive commit message: https://chris.beams.io/posts/git-commit
 .. _docstrings: https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
-.. _first-contributions tutorial: https://github.com/firstcontributions/first-contributions
-.. _flake8: https://flake8.pycqa.org/en/stable/
 .. _git: https://git-scm.com
-.. _GitHub's fork and pull request workflow: https://guides.github.com/activities/forking/
 .. _guide created by FreeCodeCamp: https://github.com/FreeCodeCamp/how-to-contribute-to-open-source
-.. _Miniconda: https://docs.conda.io/en/latest/miniconda.html
-.. _MyST: https://myst-parser.readthedocs.io/en/latest/syntax/syntax.html
 .. _other kinds of contributions: https://opensource.guide/how-to-contribute
 .. _pre-commit: https://pre-commit.com/
 .. _PyPI: https://pypi.org/
-.. _PyScaffold's contributor's guide: https://pyscaffold.org/en/stable/contributing.html
 .. _Pytest can drop you: https://docs.pytest.org/en/stable/how-to/failures.html#using-python-library-pdb-with-pytest
 .. _Python Software Foundation's Code of Conduct: https://www.python.org/psf/conduct/
-.. _reStructuredText: https://www.sphinx-doc.org/en/master/usage/restructuredtext/
 .. _Sphinx: https://www.sphinx-doc.org/en/master/
-.. _tox: https://tox.wiki/en/stable/
-.. _virtual environment: https://realpython.com/python-virtual-environments-a-primer/
-.. _virtualenv: https://virtualenv.pypa.io/en/stable/
+.. _uv: https://docs.astral.sh/uv/
 
 .. _GitHub web interface: https://docs.github.com/en/repositories/working-with-files/managing-files/editing-files
 .. _GitHub's code editor: https://docs.github.com/en/repositories/working-with-files/managing-files/editing-files

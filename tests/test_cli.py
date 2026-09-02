@@ -10,12 +10,14 @@ import aiohttp
 import pytest
 
 from libdeye.cli import (
+    CONFIG_ENV_KEYS,
     authenticate,
     get_classic_mqtt_info,
     get_device_state,
     get_fog_mqtt_info,
     list_devices,
     list_products,
+    load_config,
     load_env_file,
     main,
     monitor_device,
@@ -88,13 +90,80 @@ def test_load_env_file_with_quoted_values(tmp_path: Path) -> None:
     """Test loading environment variables with quoted values."""
     env_file = tmp_path / ".env"
     env_file.write_text(
-        'DEYE_USERNAME="quoted_user"\n' "DEYE_PASSWORD='quoted_password'\n"
+        "DEYE_USERNAME=\"quoted_user\"\nDEYE_PASSWORD='quoted_password'\n"
     )
 
     env_vars = load_env_file(str(env_file))
 
     assert env_vars["DEYE_USERNAME"] == "quoted_user"
     assert env_vars["DEYE_PASSWORD"] == "quoted_password"
+
+
+def _clear_deye_environ(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Remove Deye config keys from the process environment."""
+    for key in CONFIG_ENV_KEYS:
+        monkeypatch.delenv(key, raising=False)
+
+
+def test_load_config_from_env_file_only(
+    mock_env_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that load_config uses .env values when process env vars are unset."""
+    _clear_deye_environ(monkeypatch)
+
+    config = load_config(str(mock_env_file))
+
+    assert config["DEYE_USERNAME"] == "test_user"
+    assert config["DEYE_PASSWORD"] == "test_password"
+    assert config["DEYE_AUTH_TOKEN"] == "test_token"
+    assert config["DEYE_DEVICE_ID"] == "test_device_id"
+
+
+def test_load_config_from_environment_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that load_config reads process environment variables without a .env file."""
+    _clear_deye_environ(monkeypatch)
+    monkeypatch.setenv("DEYE_USERNAME", "env_user")
+    monkeypatch.setenv("DEYE_PASSWORD", "env_password")
+    monkeypatch.setenv("DEYE_AUTH_TOKEN", "env_token")
+    monkeypatch.setenv("DEYE_DEVICE_ID", "env_device_id")
+
+    config = load_config(str(tmp_path / "missing.env"))
+
+    assert config["DEYE_USERNAME"] == "env_user"
+    assert config["DEYE_PASSWORD"] == "env_password"
+    assert config["DEYE_AUTH_TOKEN"] == "env_token"
+    assert config["DEYE_DEVICE_ID"] == "env_device_id"
+
+
+def test_load_config_environment_overrides_env_file(
+    mock_env_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that process environment variables take precedence over the .env file."""
+    _clear_deye_environ(monkeypatch)
+    monkeypatch.setenv("DEYE_USERNAME", "env_user")
+    monkeypatch.setenv("DEYE_DEVICE_ID", "env_device_id")
+
+    config = load_config(str(mock_env_file))
+
+    assert config["DEYE_USERNAME"] == "env_user"
+    assert config["DEYE_DEVICE_ID"] == "env_device_id"
+    assert config["DEYE_PASSWORD"] == "test_password"
+    assert config["DEYE_AUTH_TOKEN"] == "test_token"
+
+
+def test_load_config_empty_environment_overrides_env_file(
+    mock_env_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Test that an explicitly empty environment variable still overrides .env."""
+    _clear_deye_environ(monkeypatch)
+    monkeypatch.setenv("DEYE_USERNAME", "")
+
+    config = load_config(str(mock_env_file))
+
+    assert config["DEYE_USERNAME"] == ""
+    assert config["DEYE_PASSWORD"] == "test_password"
 
 
 @pytest.mark.asyncio
@@ -212,9 +281,10 @@ async def test_get_fog_combo_device_state_uses_combo_client() -> None:
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_mqtt_client.query_device_state.return_value = mock_state
 
-    with patch(
-        "libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client
-    ), patch("libdeye.cli.print_device_state"):
+    with (
+        patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client),
+        patch("libdeye.cli.print_device_state"),
+    ):
         await get_device_state(mock_api, "combo_device_id")
 
     mock_mqtt_client.connect.assert_called_once()
@@ -314,9 +384,10 @@ async def test_get_device_state() -> None:
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_mqtt_client.query_device_state.return_value = mock_state
 
-    with patch(
-        "libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client
-    ), patch("libdeye.cli.print_device_state") as mock_print_state:
+    with (
+        patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client),
+        patch("libdeye.cli.print_device_state") as mock_print_state,
+    ):
         await get_device_state(mock_api, "test_device_id")
 
         mock_api.get_device_list.assert_called_once()
@@ -450,10 +521,10 @@ async def test_monitor_device() -> None:
     # Mock the infinite_future to be a future that we can control
     mock_infinite_future: asyncio.Future[None] = asyncio.Future()
 
-    with patch(
-        "libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client
-    ), patch("asyncio.Future", return_value=mock_infinite_future):
-
+    with (
+        patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client),
+        patch("asyncio.Future", return_value=mock_infinite_future),
+    ):
         # Start the monitor_device function in a task
         task = asyncio.create_task(monitor_device(mock_api, "test_device_id"))
 
@@ -515,9 +586,10 @@ async def test_run_cli_devices_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch("libdeye.cli.list_devices") as mock_list_devices:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.list_devices") as mock_list_devices,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, None)
 
         mock_authenticate.assert_called_once()
@@ -532,9 +604,10 @@ async def test_run_cli_products_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch("libdeye.cli.list_products") as mock_list_products:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.list_products") as mock_list_products,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, None)
 
         mock_authenticate.assert_called_once()
@@ -549,11 +622,10 @@ async def test_run_cli_get_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch(
-        "libdeye.cli.get_device_state"
-    ) as mock_get_device_state:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.get_device_state") as mock_get_device_state,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
 
         mock_authenticate.assert_called_once()
@@ -576,11 +648,10 @@ async def test_run_cli_set_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch(
-        "libdeye.cli.set_device_state"
-    ) as mock_set_device_state:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.set_device_state") as mock_set_device_state,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
 
         mock_authenticate.assert_called_once()
@@ -606,9 +677,10 @@ async def test_run_cli_monitor_command() -> None:
 
     mock_api = AsyncMock(spec=DeyeCloudApi)
 
-    with patch(
-        "libdeye.cli.authenticate", return_value=mock_api
-    ) as mock_authenticate, patch("libdeye.cli.monitor_device") as mock_monitor_device:
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.monitor_device") as mock_monitor_device,
+    ):
         await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
 
         mock_authenticate.assert_called_once()
@@ -620,9 +692,10 @@ def test_main_no_command() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value.command = None
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.run_cli"
-    ) as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         with pytest.raises(SystemExit) as excinfo:
             main()
 
@@ -644,9 +717,12 @@ def test_main_no_auth_credentials() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value = mock_args
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_env_file", return_value={}
-    ), patch("builtins.print") as mock_print, patch("libdeye.cli.run_cli") as mock_run:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_config", return_value={}),
+        patch("builtins.print") as mock_print,
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
         with pytest.raises(SystemExit) as excinfo:
             main()
 
@@ -660,7 +736,7 @@ def test_main_no_auth_credentials() -> None:
 
 def test_main_no_device_id() -> None:
     """Test main function with no device ID for commands that require it."""
-    for command in ["get", "set", "monitor"]:
+    for command in ("get", "set", "monitor"):
         mock_args = MagicMock()
         mock_args.command = command
         mock_args.username = "test_user"
@@ -673,11 +749,12 @@ def test_main_no_device_id() -> None:
         mock_parser = MagicMock()
         mock_parser.parse_args.return_value = mock_args
 
-        with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-            "libdeye.cli.load_env_file", return_value={}
-        ), patch("builtins.print") as mock_print, patch(
-            "libdeye.cli.run_cli"
-        ) as mock_run:
+        with (
+            patch("argparse.ArgumentParser", return_value=mock_parser),
+            patch("libdeye.cli.load_config", return_value={}),
+            patch("builtins.print") as mock_print,
+            patch("libdeye.cli.run_cli") as mock_run,
+        ):
             with pytest.raises(SystemExit) as excinfo:
                 main()
 
@@ -685,7 +762,8 @@ def test_main_no_device_id() -> None:
             mock_run.assert_not_called()
             # Check that error message was printed
             mock_print.assert_any_call(
-                "Error: You must provide device ID via command line arguments or in the .env file."
+                "Error: You must provide device ID via command line arguments, "
+                "environment variables, or a .env file."
             )
 
 
@@ -702,11 +780,12 @@ def test_main_successful_run() -> None:
     mock_parser = MagicMock()
     mock_parser.parse_args.return_value = mock_args
 
-    with patch("argparse.ArgumentParser", return_value=mock_parser), patch(
-        "libdeye.cli.load_env_file", return_value={}
-    ), patch("libdeye.cli.run_cli") as mock_run, patch(
-        "logging.basicConfig"
-    ) as mock_logging:
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_config", return_value={}),
+        patch("libdeye.cli.run_cli") as mock_run,
+        patch("logging.basicConfig") as mock_logging,
+    ):
         main()
 
         mock_logging.assert_called_once_with(
@@ -714,6 +793,137 @@ def test_main_successful_run() -> None:
             format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
         mock_run.assert_called_once()
+
+
+def test_main_uses_environment_variables(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that main accepts credentials from process environment variables."""
+    mock_args = MagicMock()
+    mock_args.command = "devices"
+    mock_args.username = None
+    mock_args.password = None
+    mock_args.token = None
+    mock_args.env_file = ".env"
+    mock_args.debug = False
+
+    mock_parser = MagicMock()
+    mock_parser.parse_args.return_value = mock_args
+
+    _clear_deye_environ(monkeypatch)
+    monkeypatch.setenv("DEYE_USERNAME", "env_user")
+    monkeypatch.setenv("DEYE_PASSWORD", "env_password")
+
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_env_file", return_value={}),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
+        main()
+
+        mock_run.assert_called_once()
+        assert mock_run.call_args.args[1] == "env_user"
+        assert mock_run.call_args.args[2] == "env_password"
+
+
+def test_main_environment_overrides_env_file(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that process environment variables override .env file values in main."""
+    mock_args = MagicMock()
+    mock_args.command = "devices"
+    mock_args.username = None
+    mock_args.password = None
+    mock_args.token = None
+    mock_args.env_file = ".env"
+    mock_args.debug = False
+
+    mock_parser = MagicMock()
+    mock_parser.parse_args.return_value = mock_args
+
+    _clear_deye_environ(monkeypatch)
+    monkeypatch.setenv("DEYE_USERNAME", "env_user")
+    monkeypatch.setenv("DEYE_PASSWORD", "env_password")
+
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch(
+            "libdeye.cli.load_env_file",
+            return_value={
+                "DEYE_USERNAME": "file_user",
+                "DEYE_PASSWORD": "file_password",
+            },
+        ),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
+        main()
+
+        mock_run.assert_called_once()
+        assert mock_run.call_args.args[1] == "env_user"
+        assert mock_run.call_args.args[2] == "env_password"
+
+
+def test_main_cli_args_override_environment() -> None:
+    """Test that command-line arguments take precedence over environment values."""
+    mock_args = MagicMock()
+    mock_args.command = "devices"
+    mock_args.username = "cli_user"
+    mock_args.password = "cli_password"
+    mock_args.token = "cli_token"
+    mock_args.env_file = ".env"
+    mock_args.debug = False
+
+    mock_parser = MagicMock()
+    mock_parser.parse_args.return_value = mock_args
+
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch(
+            "libdeye.cli.load_config",
+            return_value={
+                "DEYE_USERNAME": "env_user",
+                "DEYE_PASSWORD": "env_password",
+                "DEYE_AUTH_TOKEN": "env_token",
+            },
+        ),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
+        main()
+
+        mock_run.assert_called_once()
+        assert mock_run.call_args.args[1] == "cli_user"
+        assert mock_run.call_args.args[2] == "cli_password"
+        assert mock_run.call_args.args[3] == "cli_token"
+
+
+def test_main_uses_environment_device_id(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Test that main accepts device ID from process environment variables."""
+    mock_args = MagicMock()
+    mock_args.command = "get"
+    mock_args.username = "test_user"
+    mock_args.password = "test_password"
+    mock_args.token = None
+    mock_args.device_id = None
+    mock_args.env_file = ".env"
+    mock_args.debug = False
+
+    mock_parser = MagicMock()
+    mock_parser.parse_args.return_value = mock_args
+
+    _clear_deye_environ(monkeypatch)
+    monkeypatch.setenv("DEYE_DEVICE_ID", "env_device_id")
+
+    with (
+        patch("argparse.ArgumentParser", return_value=mock_parser),
+        patch("libdeye.cli.load_env_file", return_value={}),
+        patch("libdeye.cli.run_cli") as mock_run,
+    ):
+        main()
+
+        mock_run.assert_called_once()
+        assert mock_run.call_args.args[4] == "env_device_id"
 
 
 @pytest.mark.asyncio

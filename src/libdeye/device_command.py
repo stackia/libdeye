@@ -1,7 +1,7 @@
-"""Utilities for device command parsing"""
+"""Utilities for device command parsing."""
 
 from enum import IntEnum, IntFlag, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from .const import DeyeDeviceMode, DeyeFanSpeed
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
 
 class DeyeDeviceCommand:
-    """A class to store the command to control the device"""
+    """A class to store the command to control the device."""
 
     def __init__(
         self,
@@ -23,6 +23,7 @@ class DeyeDeviceCommand:
         mode: DeyeDeviceMode = DeyeDeviceMode.MANUAL_MODE,
         target_humidity: int = 60,
     ) -> None:
+        """Initialize the command with the desired device settings."""
         self.anion_switch = anion_switch
         self.water_pump_switch = water_pump_switch
         self.power_switch = power_switch
@@ -32,6 +33,7 @@ class DeyeDeviceCommand:
         self.mode = mode
         self.target_humidity = target_humidity
 
+    @override
     def __eq__(self, other: object) -> bool:
         """Check if two DeyeDeviceCommand instances are equal."""
         if not isinstance(other, DeyeDeviceCommand):
@@ -49,7 +51,7 @@ class DeyeDeviceCommand:
         )
 
     def to_bytes(self) -> bytes:
-        """Get binary representation of this command"""
+        """Get binary representation of this command."""
         command_flag = DeyeDeviceCommandFlag(0)
         if self.anion_switch:
             command_flag |= DeyeDeviceCommandFlag.ANION_SWITCH
@@ -78,7 +80,7 @@ class DeyeDeviceCommand:
         )
 
     def to_json(self) -> dict[str, int]:
-        """Get JSON representation of this command"""
+        """Get JSON representation of this command."""
         return {
             "KeyLock": int(self.child_lock_switch),
             "Mode": int(self.mode),
@@ -91,7 +93,7 @@ class DeyeDeviceCommand:
         }
 
     def to_json_diff(
-        self, baseline: "DeyeDeviceCommand | DeyeDeviceState"
+        self, baseline: DeyeDeviceCommand | DeyeDeviceState
     ) -> dict[str, int]:
         """Get JSON with only properties that differ from the baseline."""
         baseline_command = (
@@ -162,7 +164,7 @@ def fog_combo_frames_from_properties(properties: dict[str, int]) -> list[bytes]:
 
 
 class DeyeDeviceCommandFlag(IntFlag):
-    """Bit flags used in the command"""
+    """Bit flags used in the command."""
 
     POWER_SWITCH = auto()
     OSCILLATING_SWITCH = auto()

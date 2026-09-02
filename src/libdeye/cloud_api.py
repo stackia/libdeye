@@ -1,13 +1,13 @@
-"""Deye Cloud API related stuffs"""
+"""Deye Cloud API related stuffs."""
 
-import time
 from collections.abc import Callable
 from enum import IntEnum
+import time
 from typing import Any, TypedDict, cast
 
-import jwt
 from aiohttp import ClientSession
 from aiohttp.client_exceptions import ClientError
+import jwt
 
 from .const import (
     DEYE_API_END_USER_ENDPOINT,
@@ -25,7 +25,7 @@ class DeyeCloudApiCannotConnectError(Exception):
 
 
 class DeyeIotPlatform(IntEnum):
-    """IoT platform of devices"""
+    """IoT platform of devices."""
 
     Classic = 1
     Fog = 2
@@ -58,21 +58,21 @@ def iot_platform_sends_partial_commands(platform: int | DeyeIotPlatform) -> bool
 
 
 class DeyeApiResponseEnvelopeMeta(TypedDict):
-    """Meta information for the API message envelope"""
+    """Meta information for the API message envelope."""
 
     code: int
     message: str
 
 
 class DeyeApiResponseEnvelope(TypedDict):
-    """Message envelope for all API responses"""
+    """Message envelope for all API responses."""
 
     meta: DeyeApiResponseEnvelopeMeta
     data: Any
 
 
 def ensure_valid_response_code(result: DeyeApiResponseEnvelope) -> None:
-    """Raise errors if we don't have a valid result["meta"]["code"]"""
+    """Raise errors if we don't have a valid result["meta"]["code"]."""
     try:
         if result["meta"]["code"] != 0:
             raise DeyeCloudApiInvalidAuthError
@@ -81,7 +81,7 @@ def ensure_valid_response_code(result: DeyeApiResponseEnvelope) -> None:
 
 
 class DeyeApiResponseClassicPlatformMqttInfo(TypedDict):
-    """MQTT information for the Deye platform returned by the API"""
+    """MQTT information for the Deye platform returned by the API."""
 
     password: str
     loginname: str
@@ -93,7 +93,7 @@ class DeyeApiResponseClassicPlatformMqttInfo(TypedDict):
 
 
 class DeyeApiResponseFogPlatformMqttTopics(TypedDict):
-    """MQTT topics returned by the API"""
+    """MQTT topics returned by the API."""
 
     all: list[str]
     pub: list[str]
@@ -101,7 +101,7 @@ class DeyeApiResponseFogPlatformMqttTopics(TypedDict):
 
 
 class DeyeApiResponseFogPlatformMqttInfo(TypedDict):
-    """MQTT information for the Fog platform returned by the API"""
+    """MQTT information for the Fog platform returned by the API."""
 
     username: str
     clientid: str
@@ -114,7 +114,7 @@ class DeyeApiResponseFogPlatformMqttInfo(TypedDict):
 
 
 class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
-    """Device properties for the Fog platform returned by the API"""
+    """Device properties for the Fog platform returned by the API."""
 
     CompressorStatus: int
     CurrentAmbientTemperature: int
@@ -149,7 +149,7 @@ class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
 
 
 class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
-    """Device Command for the Fog platform sent to the API"""
+    """Device Command for the Fog platform sent to the API."""
 
     KeyLock: int
     Mode: int
@@ -162,7 +162,7 @@ class DeyeApiRequestFogPlatformDeviceCommands(TypedDict):
 
 
 class DeyeApiResponseDeviceInfo(TypedDict):
-    """Device information returned by the API"""
+    """Device information returned by the API."""
 
     producttype_id: int
     device_name: str
@@ -187,7 +187,7 @@ class DeyeApiResponseDeviceInfo(TypedDict):
 
 
 class DeyeApiResponseProductDefinition(TypedDict):
-    """Product definition information returned by the API"""
+    """Product definition information returned by the API."""
 
     productid: str
     pname: str
@@ -201,7 +201,7 @@ class DeyeApiResponseProductDefinition(TypedDict):
 
 
 class DeyeApiResponseProductType(TypedDict):
-    """Product type information returned by the API"""
+    """Product type information returned by the API."""
 
     ptype: str
     ptypename: str
@@ -222,6 +222,7 @@ class DeyeCloudApi:
         password: str,
         auth_token: str | None = None,
     ) -> None:
+        """Initialize the cloud API client."""
         self._session = session
         self._username = username
         self._password = password
@@ -230,12 +231,12 @@ class DeyeCloudApi:
 
     @property
     def auth_token(self) -> str | None:
-        """Get the auth token"""
+        """Get the auth token."""
         return self._auth_token
 
     @auth_token.setter
     def auth_token(self, value: str | None) -> None:
-        """Set the auth token and decode user_id/_auth_token_exp"""
+        """Set the auth token and decode user_id/_auth_token_exp."""
         self._auth_token = value
         if value:
             try:
@@ -279,8 +280,9 @@ class DeyeCloudApi:
         raise DeyeCloudApiInvalidAuthError
 
     async def refresh_token_if_near_expiry(self, force: bool = False) -> None:
-        """Get a new auth token by calling /refreshToken if the current auth token is about to be expired. This will be
-        automatically called for each API call.
+        """Refresh the auth token when it is close to expiry.
+
+        This is automatically called for each API call.
 
         Args:
             force: If True, refresh the token regardless of expiry time.
@@ -307,7 +309,6 @@ class DeyeCloudApi:
                 self.auth_token = token
                 if self.on_auth_token_refreshed:
                     self.on_auth_token_refreshed(token)
-            return
         except DeyeCloudApiInvalidAuthError:
             await self.authenticate()
             if self.auth_token and self.on_auth_token_refreshed:
@@ -315,6 +316,8 @@ class DeyeCloudApi:
             return
         except KeyError:
             pass
+        else:
+            return
 
         raise DeyeCloudApiInvalidAuthError
 
@@ -357,31 +360,31 @@ class DeyeCloudApi:
         return result
 
     async def get_device_list(self) -> list[DeyeApiResponseDeviceInfo]:
-        """Get all connected devices for current user"""
+        """Get all connected devices for current user."""
         result = await self._make_authenticated_request("get", "deviceList/?app=new")
         return cast(list[DeyeApiResponseDeviceInfo], result["data"])
 
     async def get_product_list(self) -> list[DeyeApiResponseProductType]:
-        """Get all available products"""
+        """Get all available products."""
         result = await self._make_authenticated_request("get", "productlist/?app=new")
         return cast(list[DeyeApiResponseProductType], result["data"]["result"])
 
     async def get_deye_platform_mqtt_info(
         self,
     ) -> DeyeApiResponseClassicPlatformMqttInfo:
-        """Get MQTT server info / credentials for current user (Deye platform)"""
+        """Get MQTT server info / credentials for current user (Deye platform)."""
         result = await self._make_authenticated_request("get", "mqttInfo/")
         return cast(DeyeApiResponseClassicPlatformMqttInfo, result["data"])
 
     async def get_fog_platform_mqtt_info(self) -> DeyeApiResponseFogPlatformMqttInfo:
-        """Get MQTT server info / credentials for current user (Fog platform)"""
+        """Get MQTT server info / credentials for current user (Fog platform)."""
         result = await self._make_authenticated_request("get", "fogmqttinfo/")
         return cast(DeyeApiResponseFogPlatformMqttInfo, result["data"])
 
     async def get_fog_platform_device_properties(
         self, device_id: str
     ) -> DeyeApiResponseFogPlatformDeviceProperties:
-        """Get properties for a device on the Fog platform"""
+        """Get properties for a device on the Fog platform."""
         result = await self._make_authenticated_request(
             "get", f"get/properties/?device_id={device_id}"
         )
@@ -390,7 +393,7 @@ class DeyeCloudApi:
         )
 
     async def poll_fog_platform_device_properties(self, device_id: str) -> None:
-        """Poll properties for a device on the Fog platform"""
+        """Poll properties for a device on the Fog platform."""
         await self._make_authenticated_request(
             "post",
             "set/properties/",
@@ -403,7 +406,7 @@ class DeyeCloudApi:
     async def set_fog_platform_device_properties(
         self, device_id: str, params: object
     ) -> None:
-        """Set properties for a device on the Fog platform"""
+        """Set properties for a device on the Fog platform."""
         await self._make_authenticated_request(
             "post",
             "set/properties/",

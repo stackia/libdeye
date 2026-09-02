@@ -1,16 +1,17 @@
+"""Tests for Deye device commands."""
+
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
 from libdeye.device_command import DeyeDeviceCommand
 
 
 def test_deye_device_command_to_bytes() -> None:
-    """DeyeDeviceCommand to_bytes() should return correct result"""
+    """DeyeDeviceCommand to_bytes() should return correct result."""
     command = DeyeDeviceCommand(power_switch=True, child_lock_switch=True)
-    print(command.to_bytes())
     assert command.to_bytes() == b"\x08\x02\x05\x10\x3c\x00\x00\x00\x00\x00"
 
 
 def test_deye_device_command_to_bytes_all_switches_on() -> None:
-    """Test to_bytes() with all switches turned on"""
+    """Test to_bytes() with all switches turned on."""
     command = DeyeDeviceCommand(
         anion_switch=True,
         water_pump_switch=True,
@@ -22,13 +23,13 @@ def test_deye_device_command_to_bytes_all_switches_on() -> None:
 
 
 def test_deye_device_command_to_bytes_all_switches_off() -> None:
-    """Test to_bytes() with all switches turned off"""
+    """Test to_bytes() with all switches turned off."""
     command = DeyeDeviceCommand()
     assert command.to_bytes() == b"\x08\x02\x00\x10\x3c\x00\x00\x00\x00\x00"
 
 
 def test_deye_device_command_to_bytes_with_fan_speed() -> None:
-    """Test to_bytes() with different fan speeds"""
+    """Test to_bytes() with different fan speeds."""
     # Test with LOW fan speed (default)
     command = DeyeDeviceCommand()
     assert command.to_bytes()[3] & 0xF0 == 0x10
@@ -47,7 +48,7 @@ def test_deye_device_command_to_bytes_with_fan_speed() -> None:
 
 
 def test_deye_device_command_to_bytes_with_mode() -> None:
-    """Test to_bytes() with different modes"""
+    """Test to_bytes() with different modes."""
     # Test with MANUAL_MODE (default)
     command = DeyeDeviceCommand()
     assert command.to_bytes()[3] & 0x0F == 0x00
@@ -66,7 +67,7 @@ def test_deye_device_command_to_bytes_with_mode() -> None:
 
 
 def test_deye_device_command_to_bytes_with_target_humidity() -> None:
-    """Test to_bytes() with different target humidity values"""
+    """Test to_bytes() with different target humidity values."""
     # Test with default target humidity (60)
     command = DeyeDeviceCommand()
     assert command.to_bytes()[4] == 60
@@ -81,7 +82,7 @@ def test_deye_device_command_to_bytes_with_target_humidity() -> None:
 
 
 def test_deye_device_command_to_json() -> None:
-    """Test to_json() returns correct JSON representation"""
+    """Test to_json() returns correct JSON representation."""
     command = DeyeDeviceCommand(
         power_switch=True,
         child_lock_switch=True,
@@ -105,7 +106,7 @@ def test_deye_device_command_to_json() -> None:
 
 
 def test_deye_device_command_to_json_all_on() -> None:
-    """Test to_json() with all features enabled"""
+    """Test to_json() with all features enabled."""
     command = DeyeDeviceCommand(
         anion_switch=True,
         water_pump_switch=True,
@@ -132,7 +133,7 @@ def test_deye_device_command_to_json_all_on() -> None:
 
 
 def test_deye_device_command_to_json_all_off() -> None:
-    """Test to_json() with all features disabled"""
+    """Test to_json() with all features disabled."""
     command = DeyeDeviceCommand()
 
     expected_json = {
@@ -200,7 +201,7 @@ def test_deye_device_command_to_json_diff_from_state() -> None:
 
 
 def test_deye_device_command_equality() -> None:
-    """Test equality comparison between DeyeDeviceCommand instances"""
+    """Test equality comparison between DeyeDeviceCommand instances."""
     # Test equality with identical instances
     command1 = DeyeDeviceCommand(
         anion_switch=True,
@@ -223,7 +224,7 @@ def test_deye_device_command_equality() -> None:
         target_humidity=70,
     )
     assert command1 == command2
-    assert not (command1 != command2)
+    assert command1 == command2
 
     # Test inequality with different switch state
     command3 = DeyeDeviceCommand(
@@ -237,7 +238,7 @@ def test_deye_device_command_equality() -> None:
         target_humidity=70,
     )
     assert command1 != command3
-    assert not (command1 == command3)
+    assert command1 != command3
 
     # Test inequality with different fan speed
     command4 = DeyeDeviceCommand(
@@ -251,7 +252,7 @@ def test_deye_device_command_equality() -> None:
         target_humidity=70,
     )
     assert command1 != command4
-    assert not (command1 == command4)
+    assert command1 != command4
 
     # Test inequality with different mode
     command5 = DeyeDeviceCommand(
@@ -265,7 +266,7 @@ def test_deye_device_command_equality() -> None:
         target_humidity=70,
     )
     assert command1 != command5
-    assert not (command1 == command5)
+    assert command1 != command5
 
     # Test inequality with different target humidity
     command6 = DeyeDeviceCommand(
@@ -279,19 +280,19 @@ def test_deye_device_command_equality() -> None:
         target_humidity=50,  # Different from command1
     )
     assert command1 != command6
-    assert not (command1 == command6)
+    assert command1 != command6
 
     # Test equality comparison with a different type
     assert command1 != "not a command"
 
 
 def test_deye_device_command_default_equality() -> None:
-    """Test equality with default instances"""
+    """Test equality with default instances."""
     # Test equality with default instances
     command1 = DeyeDeviceCommand()
     command2 = DeyeDeviceCommand()
     assert command1 == command2
-    assert not (command1 != command2)
+    assert command1 == command2
 
     # Create a command with explicit defaults that should equal a default command
     command3 = DeyeDeviceCommand(

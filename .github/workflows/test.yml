@@ -12,18 +12,26 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-python@v7
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
         with:
-          python-version: "3.13"
+          enable-cache: true
+          python-version: "3.14"
 
-      - name: Install dependencies
-        run: pip install tox
+      - name: Install the project
+        run: uv sync --locked --group test --group dev
+
+      - name: Run lint
+        run: uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Run type check
-        run: tox -e mypy -- .
+        run: uv run mypy .
+
+      - name: Run pylint
+        run: uv run pylint src/libdeye tests
 
       - name: Run tests
-        run: tox -- --cov-report xml --junitxml=junit.xml -o junit_family=legacy
+        run: uv run pytest --cov-report xml --junitxml=junit.xml -o junit_family=legacy
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
