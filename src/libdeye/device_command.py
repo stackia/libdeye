@@ -1,6 +1,6 @@
 """Utilities for device command parsing."""
 
-from enum import IntFlag, auto
+from enum import IntEnum, IntFlag, auto
 from typing import TYPE_CHECKING, override
 
 from .const import DeyeDeviceMode, DeyeFanSpeed
@@ -104,6 +104,63 @@ class DeyeDeviceCommand:
         command_json = self.to_json()
         baseline_json = baseline_command.to_json()
         return {k: v for k, v in command_json.items() if baseline_json[k] != v}
+
+
+class DeyeFogComboCommand(IntEnum):
+    """FogCombo opcodes from official CommandManger.sendSingleCommand.
+
+    Inner payload is ``{17, cmd, value}``, then wrapped as
+    ``{2, 17, cmd, value}`` before Classic MQTT publish.
+    """
+
+    POWER = 1
+    OSCILLATING = 2
+    CHILD_LOCK = 3
+    WATER_PUMP = 6
+    ANION = 7
+    MODE = 8
+    FAN_SPEED = 9
+    HUMIDITY_OR_TEMP = 10
+    SLEEP = 15
+
+
+FOG_COMBO_FRAME_PREFIX = 2
+FOG_COMBO_COMMAND_HEADER = 17
+
+FOG_COMBO_PROPERTY_COMMANDS: dict[str, DeyeFogComboCommand] = {
+    "Power": DeyeFogComboCommand.POWER,
+    "SwingingWind": DeyeFogComboCommand.OSCILLATING,
+    "KeyLock": DeyeFogComboCommand.CHILD_LOCK,
+    "WaterPump": DeyeFogComboCommand.WATER_PUMP,
+    "NegativeIon": DeyeFogComboCommand.ANION,
+    "Mode": DeyeFogComboCommand.MODE,
+    "WindSpeed": DeyeFogComboCommand.FAN_SPEED,
+    "SetHumidity": DeyeFogComboCommand.HUMIDITY_OR_TEMP,
+    "SetTemperature": DeyeFogComboCommand.HUMIDITY_OR_TEMP,
+    "Sleep": DeyeFogComboCommand.SLEEP,
+}
+
+
+def encode_fog_combo_frame(command: int, value: int) -> bytes:
+    """Encode one official FogCombo MQTT payload: ``{2, 17, cmd, value}``."""
+    return bytes(
+        [
+            FOG_COMBO_FRAME_PREFIX,
+            FOG_COMBO_COMMAND_HEADER,
+            int(command) & 0xFF,
+            int(value) & 0xFF,
+        ]
+    )
+
+
+def fog_combo_frames_from_properties(properties: dict[str, int]) -> list[bytes]:
+    """Convert Fog JSON property names into official FogCombo MQTT frames."""
+    frames: list[bytes] = []
+    for name, value in properties.items():
+        opcode = FOG_COMBO_PROPERTY_COMMANDS.get(name)
+        if opcode is not None:
+            frames.append(encode_fog_combo_frame(opcode, value))
+    return frames
 
 
 class DeyeDeviceCommandFlag(IntFlag):

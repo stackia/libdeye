@@ -51,3 +51,10 @@ MANIFEST
 .env
 *.env
 !.env.example
+
+# Deye Smart APK and unpack intermediates (not kept in git).
+# Use reverse-engineering/apk/download-apk.sh then reverse-engineering/decompile-apk.sh.
+reverse-engineering/apk/*.apk
+reverse-engineering/unpacked/dex/
+reverse-engineering/unpacked/qh/
+reverse-engineering/unpacked/jadx-full/

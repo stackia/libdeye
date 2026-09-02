@@ -1,0 +1,92 @@
+{
+  "deviceModel": "DY_A06A4",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": false,
+  "hasHistoryData": false,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "anion": {
+    "off": "0",
+    "on": "1"
+  },
+  "tone": {
+    "off": "0",
+    "on": "1"
+  },
+  "displayScreen": {
+    "off": "0",
+    "on": "1"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/manual_unselect.png",
+      "img/mode/drying_unselect.png",
+      "img/mode/sleep_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/manual_select.png",
+      "img/mode/drying_select.png",
+      "img/mode/sleep_select.png"
+    ],
+    "key": [
+      "dehumidify",
+      "drying",
+      "sleep"
+    ],
+    "name": [
+      "除湿",
+      "干衣",
+      "睡眠"
+    ],
+    "nameEn": [
+      "Dehumidify",
+      "Drying",
+      "Sleep"
+    ],
+    "value": [
+      "0",
+      "1",
+      "6"
+    ]
+  },
+  "humidity": {
+    "tickNum": "7",
+    "min": "40",
+    "max": "70",
+    "co": "25"
+  },
+  "speed": {
+    "iconNormal": [
+      "img/wind_speed/low_wind_gray.png",
+      "img/wind_speed/high_wind_gray.png"
+    ],
+    "iconSelected": [
+      "img/wind_speed/low_wind_white.png",
+      "img/wind_speed/high_wind_white.png"
+    ],
+    "key": [
+      "wind_low",
+      "wind_high"
+    ],
+    "name": [
+      "低风",
+      "高风"
+    ],
+    "nameEn": [
+      "Low",
+      "High"
+    ],
+    "value": [
+      "1",
+      "3"
+    ]
+  }
+}

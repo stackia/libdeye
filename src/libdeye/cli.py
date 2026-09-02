@@ -13,10 +13,10 @@ from typing import cast
 
 import aiohttp
 
-from .cloud_api import DeyeCloudApi, DeyeIotPlatform
+from .client import DeyeClient
+from .cloud_api import DeyeCloudApi, DeyeIotPlatform, transport_for_device
 from .const import DeyeDeviceMode, DeyeFanSpeed
 from .device_state import DeyeDeviceState
-from .mqtt_client import BaseDeyeMqttClient, DeyeClassicMqttClient, DeyeFogMqttClient
 
 CONFIG_ENV_KEYS = (
     "DEYE_USERNAME",
@@ -84,7 +84,13 @@ async def list_devices(api: DeyeCloudApi) -> None:
             f"   Product: {device['product_name']} ({device['product_id']}) ({device['product_type']})"
         )
         print(f"   MAC: {device['mac']}")
-        print(f"   Platform: {DeyeIotPlatform(device['platform']).name}")
+        try:
+            platform_name = DeyeIotPlatform(device["platform"]).name
+        except ValueError:
+            platform_name = f"Unknown({device['platform']})"
+        transport_name = transport_for_device(device).name
+        print(f"   Platform: {platform_name}")
+        print(f"   Transport: {transport_name}")
         print()
 
 
@@ -126,47 +132,21 @@ def print_device_state(state: DeyeDeviceState) -> None:
 
 async def get_device_state(api: DeyeCloudApi, device_id: str) -> None:
     """Get the current state of a device."""
-    # Get device info to determine platform
-    devices = await api.get_device_list()
-    device_info = next((d for d in devices if d["device_id"] == device_id), None)
+    client = DeyeClient(api)
+    device = await client.get_device(device_id)
 
-    if not device_info:
+    if not device:
         print(f"Device {device_id} not found")
         return
 
-    platform = DeyeIotPlatform(device_info["platform"])
-
-    # Get MQTT info based on platform
-    mqtt_client: BaseDeyeMqttClient
-
-    if platform == DeyeIotPlatform.Classic:
-        # Get MQTT info for Classic platform
-        mqtt_client = DeyeClassicMqttClient(api)
-    elif platform == DeyeIotPlatform.Fog:
-        # Get MQTT info for Fog platform
-        mqtt_client = DeyeFogMqttClient(api)
-
-    # Connect to MQTT
-    await mqtt_client.connect()
-
-    # Create a future to get the device state
-    state_future = mqtt_client.query_device_state(device_info["product_id"], device_id)
-
     try:
-        # Wait for the state with a timeout
-        state = await asyncio.wait_for(state_future, timeout=10.0)
-
-        # Print the state
-        print(f"Device State for {device_info['device_name']} ({device_id}):")
+        state = await asyncio.wait_for(device.refresh(), timeout=10.0)
+        print(f"Device State for {device.name} ({device_id}):")
         print_device_state(state)
-
     except TimeoutError:
-        print(
-            f"Timeout waiting for device state for {device_info['device_name']} ({device_id})"
-        )
+        print(f"Timeout waiting for device state for {device.name} ({device_id})")
     finally:
-        # Disconnect from MQTT
-        mqtt_client.disconnect()
+        client.disconnect()
 
 
 async def set_device_state(
@@ -182,40 +162,17 @@ async def set_device_state(
     child_lock: bool | None = None,
 ) -> None:
     """Set the state of a device."""
-    # Get device info to determine platform
-    devices = await api.get_device_list()
-    device_info = next((d for d in devices if d["device_id"] == device_id), None)
+    client = DeyeClient(api)
+    device = await client.get_device(device_id)
 
-    if not device_info:
+    if not device:
         print(f"Device {device_id} not found")
         return
 
-    platform = DeyeIotPlatform(device_info["platform"])
-
-    # Get MQTT info based on platform
-    mqtt_client: BaseDeyeMqttClient
-
-    if platform == DeyeIotPlatform.Classic:
-        # Get MQTT info for Classic platform
-        mqtt_client = DeyeClassicMqttClient(api)
-    elif platform == DeyeIotPlatform.Fog:
-        # Get MQTT info for Fog platform
-        mqtt_client = DeyeFogMqttClient(api)
-
-    # Connect to MQTT
-    await mqtt_client.connect()
-
-    # Create a future to get the device state
-    state_future = mqtt_client.query_device_state(device_info["product_id"], device_id)
-
     try:
-        # Wait for the state with a timeout
-        state = await asyncio.wait_for(state_future, timeout=10.0)
-
-        # Create a command based on the current state
+        state = await asyncio.wait_for(device.refresh(), timeout=10.0)
         command = state.to_command()
 
-        # Update the command with the new values
         if power is not None:
             command.power_switch = power
         if mode is not None:
@@ -233,73 +190,40 @@ async def set_device_state(
         if child_lock is not None:
             command.child_lock_switch = child_lock
 
-        properties = (
-            command.to_json_diff(state) if platform == DeyeIotPlatform.Fog else None
-        )
-        await mqtt_client.publish_command(
-            device_info["product_id"],
-            device_id,
-            command,
-            properties=properties,
-        )
-
-        print(f"Command sent to device {device_info['device_name']} ({device_id})")
-
+        await device.apply(command, baseline=state)
+        print(f"Command sent to device {device.name} ({device_id})")
     except TimeoutError:
-        print(
-            f"Timeout waiting for device state for {device_info['device_name']} ({device_id})"
-        )
+        print(f"Timeout waiting for device state for {device.name} ({device_id})")
     finally:
-        # Disconnect from MQTT
-        mqtt_client.disconnect()
+        client.disconnect()
 
 
 async def monitor_device(api: DeyeCloudApi, device_id: str) -> None:
     """Monitor a device for state updates."""
-    # Get device info to determine platform
-    devices = await api.get_device_list()
-    device_info = next((d for d in devices if d["device_id"] == device_id), None)
+    client = DeyeClient(api)
+    device = await client.get_device(device_id)
 
-    if not device_info:
+    if not device:
         print(f"Device {device_id} not found")
         return
 
-    platform = DeyeIotPlatform(device_info["platform"])
+    await device.ensure_connected()
 
-    # Get MQTT info based on platform
-    mqtt_client: BaseDeyeMqttClient
-
-    if platform == DeyeIotPlatform.Classic:
-        # Get MQTT info for Classic platform
-        mqtt_client = DeyeClassicMqttClient(api)
-    elif platform == DeyeIotPlatform.Fog:
-        # Get MQTT info for Fog platform
-        mqtt_client = DeyeFogMqttClient(api)
-
-    # Connect to MQTT
-    await mqtt_client.connect()
-
-    # Set up state update callback
     def on_state_update(state: DeyeDeviceState) -> None:
         print(
             f"\nState update detected at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}:"
         )
         print_device_state(state)
 
-    # Set up availability change callback
     def on_availability_change(available: bool) -> None:
         print(f"\nDevice availability changed: {'Online' if available else 'Offline'}")
 
-    # Subscribe to state and availability changes
-    unsubscribe_state = mqtt_client.subscribe_state_change(
-        device_info["product_id"], device_id, on_state_update
-    )
-    unsubscribe_availability = mqtt_client.subscribe_availability_change(
-        device_info["product_id"], device_id, on_availability_change
+    unsubscribe = device.subscribe(
+        on_state=on_state_update, on_availability=on_availability_change
     )
 
     try:
-        print(f"Monitoring device {device_info['device_name']} ({device_id})...")
+        print(f"Monitoring device {device.name} ({device_id})...")
         infinite_future: asyncio.Future[None] = asyncio.Future()
         for signal in (SIGINT, SIGTERM):
             asyncio.get_running_loop().add_signal_handler(
@@ -308,10 +232,8 @@ async def monitor_device(api: DeyeCloudApi, device_id: str) -> None:
         await infinite_future
         print("Received exit, exiting")
     finally:
-        # Unsubscribe and disconnect
-        unsubscribe_state()
-        unsubscribe_availability()
-        mqtt_client.disconnect()
+        unsubscribe()
+        client.disconnect()
 
 
 async def print_auth_token(api: DeyeCloudApi) -> None:
@@ -452,17 +374,23 @@ def main() -> None:
     subparsers = parser.add_subparsers(dest="command", help="Command to execute")
 
     # List devices command
-    subparsers.add_parser("devices", help="List all devices")
+    subparsers.add_parser(
+        "devices", help="List devices with platform and command transport"
+    )
 
     # List products command
     subparsers.add_parser("products", help="List all available products")
 
     # Get device state command
-    get_parser = subparsers.add_parser("get", help="Get device state")
+    get_parser = subparsers.add_parser(
+        "get", help="Get device state (Classic, Fog, or Combo)"
+    )
     get_parser.add_argument("--device-id", help="Device ID")
 
     # Set device state command
-    set_parser = subparsers.add_parser("set", help="Set device state")
+    set_parser = subparsers.add_parser(
+        "set", help="Set device state (Classic, Fog, or Combo)"
+    )
     set_parser.add_argument("--device-id", help="Device ID")
     set_parser.add_argument("--power", choices=["on", "off"], help="Power state")
     set_parser.add_argument(
@@ -472,7 +400,9 @@ def main() -> None:
         "--fan-speed", choices=[speed.name for speed in DeyeFanSpeed], help="Fan speed"
     )
     set_parser.add_argument(
-        "--target-humidity", type=int, help="Target humidity percentage (30-80)"
+        "--target-humidity",
+        type=int,
+        help="Target humidity percentage (product-specific range)",
     )
     set_parser.add_argument("--anion", choices=["on", "off"], help="Anion state")
     set_parser.add_argument(
@@ -487,7 +417,7 @@ def main() -> None:
 
     # Monitor device command
     monitor_parser = subparsers.add_parser(
-        "monitor", help="Monitor device state changes"
+        "monitor", help="Monitor MQTT state and availability"
     )
     monitor_parser.add_argument("--device-id", help="Device ID")
 

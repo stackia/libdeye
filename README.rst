@@ -57,6 +57,7 @@ Supported devices:
 * DY-8158T
 * DY-Y16A3
 * DY-SC60Y
+* DYD-P40
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py>`_.
 
@@ -83,23 +84,23 @@ Usage
 
 .. code-block:: bash
 
-    # List all devices
+    # List devices (prints platform and CLASSIC / FOG / COMBO transport)
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD devices
 
     # List all available product types
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD products
 
-    # Get device state
+    # Get device state (works for Classic, Fog, and Combo)
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD get --device-id YOUR_DEVICE_ID
 
     # Set device state
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --power on --target-humidity 50
 
-    # Set device mode and fan speed
-    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --mode Auto --fan-speed High
+    # Set device mode and fan speed (enum names, not display labels)
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --mode AUTO_MODE --fan-speed HIGH
 
     # Set additional device features
-    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --anion on --oscillating on --child-lock off
+    deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD set --device-id YOUR_DEVICE_ID --anion on --oscillating on --water-pump off --child-lock off
 
     # Monitor device state changes in real-time
     deye-cli --username YOUR_USERNAME --password YOUR_PASSWORD monitor --device-id YOUR_DEVICE_ID
@@ -162,10 +163,10 @@ The supported variable names (used by both the environment and .env files) are:
     DEYE_PASSWORD=your_password
     # Optional: store auth token to avoid login each time
     DEYE_AUTH_TOKEN=your_auth_token
-    # Optional: store device and product IDs for quick access
+    # Optional: default device for get / set / monitor
     DEYE_DEVICE_ID=your_device_id
 
-With device and product IDs configured, you can simplify commands:
+With ``DEYE_DEVICE_ID`` configured, you can omit ``--device-id``:
 
 .. code-block:: bash
 
@@ -200,15 +201,19 @@ To avoid sending your username and password with each request, you can use an au
 Available Commands
 ------------------
 
-- ``devices``: List all devices connected to your account
+- ``devices``: List devices on the account, including IoT platform and command transport (``CLASSIC``, ``FOG``, or ``COMBO``)
 - ``products``: List all available product types
-- ``get``: Get the current state of a device
-- ``set``: Set the state of a device (power, mode, fan speed, etc.)
-- ``monitor``: Monitor device state changes in real-time
+- ``get``: Query current state via ``DeyeClient`` (Classic MQTT poll, Fog HTTP GET, or Combo MQTT poll)
+- ``set``: Send a command via ``DeyeClient.apply`` (power, mode, fan speed, humidity, anion, water pump, oscillating, child lock)
+- ``monitor``: Subscribe to MQTT state and availability updates
 - ``print-token``: Print the authentication token for use in .env file
 - ``refresh-token``: Force refresh the authentication token
-- ``classic-mqtt``: Get MQTT information for Classic platform
-- ``fog-mqtt``: Get MQTT information for Fog platform
+- ``classic-mqtt``: Get MQTT broker credentials for Classic / Combo devices
+- ``fog-mqtt``: Get MQTT broker credentials for Fog devices (inbound state only; Fog commands use HTTP)
+
+``set --mode`` and ``set --fan-speed`` take ``DeyeDeviceMode`` / ``DeyeFanSpeed``
+enum names, for example ``MANUAL_MODE``, ``CLOTHES_DRYER_MODE``, ``AUTO_MODE``,
+``LOW``, ``HIGH``. Humidity range depends on the product (often 25-80 or 26-90).
 
 For more options, run:
 
@@ -216,98 +221,65 @@ For more options, run:
 
     deye-cli --help
 
--------------
-Example Usage
--------------
+----------
+Public API
+----------
+
+Callers use ``DeyeClient`` and ``DeyeDevice``. The library selects Classic
+MQTT, Fog HTTP, or Combo MQTT from each device-list entry. Do not construct
+platform MQTT clients yourself.
+
+Call ``refresh()`` or ``ensure_connected()`` before ``subscribe()``.
+Send commands with ``device.apply(command, baseline=...)``. Fog devices
+with cached ``ProtocolVersion == 0`` send a full property snapshot;
+otherwise only changed fields are posted.
 
 .. code-block:: python
 
     import asyncio
-    from typing import List, Optional, Union
 
     import aiohttp
-    from libdeye.cloud_api import DeyeApiResponseDeviceInfo, DeyeCloudApi, DeyeIotPlatform
-    from libdeye.device_state import DeyeDeviceState
-    from libdeye.mqtt_client import DeyeClassicMqttClient, DeyeFogMqttClient
+    from libdeye import DeyeClient
 
 
     async def main() -> None:
-        async with aiohttp.ClientSession() as client:
-            # You can authenticate with username/password
-            cloud_api = DeyeCloudApi(client, "<phone_number>", "<password>")
-            await cloud_api.authenticate()
+        async with aiohttp.ClientSession() as session:
+            client = DeyeClient.from_credentials(
+                session, "<phone_number>", "<password>"
+            )
+            await client.authenticate()
 
-            # Get the list of devices
-            devices: List[DeyeApiResponseDeviceInfo] = await cloud_api.get_device_list()
+            devices = await client.list_devices()
             if not devices:
                 print("No devices found")
                 return
 
-            # Get the first device
             device = devices[0]
-            product_id: str = device["product_id"]
-            device_id: str = device["device_id"]
-            platform: DeyeIotPlatform = DeyeIotPlatform(device["platform"])
+            print(f"Device: {device.name} (ID: {device.device_id})")
+            print(f"Transport: {device.transport.name}")
 
-            print(f"Device: {device['device_name']} (ID: {device_id})")
+            state = await device.refresh()
             print(
-                f"Platform: {'Classic' if platform == DeyeIotPlatform.Classic else 'Fog'}"
+                f"Current humidity: {state.environment_humidity}% "
+                f"(Target: {state.target_humidity}%)"
             )
 
-            mqtt_client: Optional[Union[DeyeClassicMqttClient, DeyeFogMqttClient]] = None
-
-            # Handle device based on platform
-            if platform == DeyeIotPlatform.Classic:
-                # Create MQTT client for Classic platform
-                mqtt_client = DeyeClassicMqttClient(cloud_api)
-                await mqtt_client.connect()
-            elif platform == DeyeIotPlatform.Fog:
-                # Create MQTT client for Fog platform
-                mqtt_client = DeyeFogMqttClient(cloud_api)
-                await mqtt_client.connect()
-
-            assert mqtt_client is not None
-
-            # Query current state
-            state: DeyeDeviceState = await mqtt_client.query_device_state(
-                product_id, device_id
-            )
-            print(
-                f"Current humidity: {state.environment_humidity}% (Target: {state.target_humidity}%)"
-            )
-
-            # Subscribe to state changes
-            def on_state_update(state: DeyeDeviceState) -> None:
+            def on_state_update(state) -> None:
                 print(
-                    f"Device state updated. Current humidity: {state.environment_humidity}% (Target: {state.target_humidity}%)"
+                    f"Device state updated. Current humidity: "
+                    f"{state.environment_humidity}%"
                 )
 
-            # Subscribe to availability changes
-            def on_availability_change(available: bool) -> None:
-                print(
-                    f"Device availability changed: {'Online' if available else 'Offline'}"
-                )
+            unsubscribe = device.subscribe(on_state=on_state_update)
 
-            # Set up subscriptions
-            unsubscribe_state = mqtt_client.subscribe_state_change(
-                product_id, device_id, on_state_update
-            )
-            unsubscribe_availability = mqtt_client.subscribe_availability_change(
-                product_id, device_id, on_availability_change
-            )
-
-            # Set target humidity
-            state.target_humidity = 40
-            await mqtt_client.publish_command(product_id, device_id, state.to_command())
+            command = state.to_command()
+            command.target_humidity = 40
+            await device.apply(command, baseline=state)
 
             await asyncio.sleep(30)
-
-            # Unsubscribe from state changes
-            unsubscribe_state()
-            unsubscribe_availability()
-            mqtt_client.disconnect()
+            unsubscribe()
+            client.disconnect()
 
 
-    # Run the example
     if __name__ == "__main__":
         asyncio.run(main())

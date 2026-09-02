@@ -227,8 +227,10 @@ on PyPI_, the following steps can be used to release a new version for
 ``libdeye``:
 
 #. Make sure all unit tests are successful.
-#. Tag the current commit on the main branch with a release tag, e.g., ``v1.2.3``.
-#. Push the new tag to the upstream repository_, e.g., ``git push upstream v1.2.3``
+#. Tag the current commit on the main branch with a release tag matching
+   existing tags, e.g., ``3.0.0`` (no ``v`` prefix).
+#. Push the new tag to the upstream repository_, e.g., ``git push origin 3.0.0``.
+   Pushing the tag runs ``Publish to PyPI``.
 #. Clean up the ``dist`` and ``build`` folders (``rm -rf dist build``)
    to avoid confusion with old builds and Sphinx docs.
 #. Run ``uv build --no-sources`` and check that the files in ``dist`` have

@@ -11,7 +11,10 @@ from .device_command import DeyeDeviceCommand
 class DeyeDeviceState:
     """A class to store the device state."""
 
-    def __init__(self, state: str | DeyeApiResponseFogPlatformDeviceProperties) -> None:
+    def __init__(
+        self,
+        state: str | DeyeApiResponseFogPlatformDeviceProperties,
+    ) -> None:
         """Parse a Classic hex state string or Fog property payload."""
         self.anion_switch: bool = False
         self.water_pump_switch: bool = False
@@ -78,7 +81,8 @@ class DeyeDeviceState:
         self._exhaust_temperature = state_hex[17] - 40
 
     def _parse_state_fog(
-        self, state: DeyeApiResponseFogPlatformDeviceProperties
+        self,
+        state: DeyeApiResponseFogPlatformDeviceProperties,
     ) -> None:
         self.anion_switch = bool(state["NegativeIon"])
         self.water_pump_switch = bool(state["WaterPump"])

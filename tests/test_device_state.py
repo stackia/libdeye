@@ -26,6 +26,7 @@ class FogDevicePropertiesForTest(TypedDict, total=False):
     CurrentEnvironmentalHumidity: int
     CurrentCoilTemperature: int
     CurrentExhaustTemperature: int
+    CompressorStatus: int
 
 
 def test_deye_device_state_init() -> None:
@@ -208,6 +209,44 @@ def test_deye_device_state_fog_missing_values() -> None:
     assert state.target_humidity == 60
     assert state.environment_temperature == 27
     assert state.environment_humidity == 27
+
+
+def test_deye_device_state_parse_unknown_fan_speed() -> None:
+    """WindSpeed=5 is Auto Wind used by DYD-P40."""
+    fog_state: FogDevicePropertiesForTest = {
+        "Power": 1,
+        "WaterTank": 0,
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "SwingingWind": 0,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "Fan": 1,
+        "WindSpeed": 5,
+        "Mode": 3,
+    }
+    state = DeyeDeviceState(cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state))
+    assert state.fan_speed is DeyeFanSpeed.AUTO
+
+
+def test_deye_device_state_fog_fan_running_uses_fan_property() -> None:
+    """Official Fog state maps Fan to fan_running for every product."""
+    fog_state: FogDevicePropertiesForTest = {
+        "Power": 0,
+        "WaterTank": 0,
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "SwingingWind": 0,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "Fan": 1,
+        "WindSpeed": 5,
+        "Mode": 3,
+        "CompressorStatus": 0,
+    }
+    state = DeyeDeviceState(cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state))
+    assert state.fan_running is True
+    assert state.fan_speed is DeyeFanSpeed.AUTO
 
 
 def test_deye_device_state_equality_same_state() -> None:

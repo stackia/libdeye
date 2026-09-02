@@ -1,0 +1,147 @@
+{
+  "deviceModel": "DY-890T",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": false,
+  "hasHistoryData": false,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/automatic_unselect.png",
+      "img/mode/manual_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/automatic_select.png",
+      "img/mode/manual_select.png"
+    ],
+    "key": [
+      "dehumidify",
+      "automatic"
+    ],
+    "name": [
+      "自动",
+      "手动"
+    ],
+    "nameEn": [
+      "Auto",
+      "Manual"
+    ],
+    "value": [
+      "3",
+      "0"
+    ]
+  },
+
+
+
+
+
+  "humidity": {
+    "textArray": [
+      "CO(连续除湿)",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "55%",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "90%"
+    ],
+    "tickNum": "65",
+    "min": "26",
+    "max": "90",
+    "co": "25"
+  },
+  "speed": {
+    "iconNormal": [
+      "img/wind_speed/low_wind_gray.png",
+      "img/wind_speed/high_wind_gray.png"
+    ],
+    "iconSelected": [
+      "img/wind_speed/low_wind_white.png",
+      "img/wind_speed/high_wind_white.png"
+    ],
+    "key": [
+      "wind_low",
+      "wind_high"
+    ],
+    "name": [
+      "低风",
+      "高风"
+    ],
+    "nameEn": [
+      "Low Wind",
+      "High Wind"
+    ],
+    "value": [
+      "1",
+      "3"
+    ]
+  }
+}

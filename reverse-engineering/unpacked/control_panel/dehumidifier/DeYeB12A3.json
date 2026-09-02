@@ -1,0 +1,94 @@
+{
+  "deviceModel": "DYD-B12A3",
+  "deviceControlStrategy": "wan",
+  "hasDelayer": false,
+  "hasHistoryData": false,
+  "hasScheduler": true,
+  "hasDeviceSuggest": true,
+  "power": {
+    "off": "0",
+    "on": "1"
+  },
+  "childLock": {
+    "off": "0",
+    "on": "1"
+  },
+  "anion": {
+    "off": "0",
+    "on": "1"
+  },
+  "mode": {
+    "iconNormal": [
+      "img/mode/manual_unselect.png",
+      "img/mode/drying_unselect.png",
+      "img/mode/fresh_unselect.png",
+      "img/mode/sleep_unselect.png"
+    ],
+    "iconSelected": [
+      "img/mode/manual_select.png",
+      "img/mode/drying_select.png",
+      "img/mode/fresh_select.png",
+      "img/mode/sleep_select.png"
+    ],
+    "key": [
+      "dehumidify",
+      "drying",
+      "air_purification",
+      "sleep"
+    ],
+    "name": [
+      "手动",
+      "干衣",
+      "净化",
+      "睡眠"
+    ],
+    "nameEn": [
+      "Manual",
+      "Drying",
+      "Purification",
+      "Sleep"
+    ],
+    "value": [
+      "0",
+      "1",
+      "2",
+      "6"
+    ]
+  },
+  "humidity": {
+    "textArray": [
+      "CO(连续除湿)",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "55%",
+      "",
+      "",
+      "",
+      "",
+      "80%"
+    ],
+    "tickNum": "11",
+    "min": "30",
+    "max": "80",
+    "co": "25"
+  },
+  "speed": {
+    "iconNormal": [
+
+    ],
+    "iconSelected": [
+
+    ],
+    "key": [
+
+    ],
+    "name": [
+
+    ],
+    "value": [
+    ]
+  }
+}

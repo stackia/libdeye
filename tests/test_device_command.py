@@ -306,4 +306,38 @@ def test_deye_device_command_default_equality() -> None:
         target_humidity=60,
     )
     assert command1 == command3
-    assert command1 == command3
+    assert (command1 != command3) is False
+
+
+def test_encode_fog_combo_frame_matches_official_command_manger() -> None:
+    """Official sendSingleCommand wraps {17, cmd, value} as {2, 17, cmd, value}."""
+    from libdeye.device_command import (
+        DeyeFogComboCommand,
+        encode_fog_combo_frame,
+        fog_combo_frames_from_properties,
+    )
+
+    assert encode_fog_combo_frame(DeyeFogComboCommand.POWER, 1) == bytes([2, 17, 1, 1])
+    assert encode_fog_combo_frame(DeyeFogComboCommand.OSCILLATING, 0) == bytes(
+        [2, 17, 2, 0]
+    )
+    assert encode_fog_combo_frame(DeyeFogComboCommand.CHILD_LOCK, 1) == bytes(
+        [2, 17, 3, 1]
+    )
+    assert encode_fog_combo_frame(DeyeFogComboCommand.WATER_PUMP, 1) == bytes(
+        [2, 17, 6, 1]
+    )
+    assert encode_fog_combo_frame(DeyeFogComboCommand.ANION, 1) == bytes([2, 17, 7, 1])
+    assert encode_fog_combo_frame(DeyeFogComboCommand.MODE, 3) == bytes([2, 17, 8, 3])
+    assert encode_fog_combo_frame(DeyeFogComboCommand.FAN_SPEED, 5) == bytes(
+        [2, 17, 9, 5]
+    )
+    assert encode_fog_combo_frame(DeyeFogComboCommand.HUMIDITY_OR_TEMP, 45) == bytes(
+        [2, 17, 10, 45]
+    )
+    assert encode_fog_combo_frame(DeyeFogComboCommand.SLEEP, 1) == bytes([2, 17, 15, 1])
+
+    frames = fog_combo_frames_from_properties(
+        {"Power": 1, "SetHumidity": 45, "Unknown": 9}
+    )
+    assert frames == [bytes([2, 17, 1, 1]), bytes([2, 17, 10, 45])]

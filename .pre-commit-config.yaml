@@ -10,7 +10,9 @@ repos:
       - id: ruff-check
         args:
           - --fix
+        exclude: ^reverse-engineering/
       - id: ruff-format
+        exclude: ^reverse-engineering/
   - repo: https://github.com/codespell-project/codespell
     rev: v2.4.3
     hooks:
@@ -20,7 +22,7 @@ repos:
           - --skip="./.*,*.csv,*.json"
           - --quiet-level=2
         exclude_types: [csv, json]
-        exclude: ^uv\.lock$
+        exclude: ^(uv\.lock|reverse-engineering/)
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
@@ -29,10 +31,14 @@ repos:
       - id: check-toml
       - id: check-yaml
       - id: check-added-large-files
+        exclude: ^reverse-engineering/
       - id: check-case-conflict
       - id: trailing-whitespace
+        exclude: ^reverse-engineering/
       - id: end-of-file-fixer
+        exclude: ^reverse-engineering/
       - id: mixed-line-ending
+        exclude: ^reverse-engineering/
   - repo: https://github.com/adrienverge/yamllint.git
     rev: v1.38.0
     hooks:

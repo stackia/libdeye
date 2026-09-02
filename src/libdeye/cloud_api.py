@@ -10,6 +10,7 @@ from aiohttp.client_exceptions import ClientError
 import jwt
 
 from .const import (
+    COMBO_PROTOCOL_VERSION,
     DEYE_API_END_USER_ENDPOINT,
     DEYE_LOGIN_PARAM_APP_ID,
     DEYE_LOGIN_PARAM_EXTEND,
@@ -25,10 +26,28 @@ class DeyeCloudApiCannotConnectError(Exception):
 
 
 class DeyeIotPlatform(IntEnum):
-    """IoT platform of devices."""
+    """IoT platform id from the device-list API.
+
+    Official ``DeviceListBean.isFogPlatform()`` is ``platform == 2 ||
+    platform == 3``. Platform 3 is Fog HTTP, not Combo MQTT.
+    """
 
     Classic = 1
     Fog = 2
+    FogCombo = 3  # Fog HTTP in the official app (not Combo MQTT frames)
+
+
+class DeyeDeviceTransport(IntEnum):
+    """CommandManger send/receive path for a device.
+
+    Official routing: if isFog then Fog HTTP; else if isCombo then Combo
+    MQTT frames; else Classic 10-byte MQTT. Combo is
+    ``is_combo && protocol_version == combo_V1.0``, not ``platform == 3``.
+    """
+
+    CLASSIC = 1
+    FOG = 2
+    COMBO = 3
 
 
 class DeyeApiResponseEnvelopeMeta(TypedDict):
@@ -158,6 +177,27 @@ class DeyeApiResponseDeviceInfo(TypedDict):
     picture_v3: str
     work_time: int
     user_count: int
+
+
+def device_uses_fog_platform(device: DeyeApiResponseDeviceInfo) -> bool:
+    """Return True when official ``isFogPlatform()`` is true."""
+    return int(device["platform"]) in {DeyeIotPlatform.Fog, DeyeIotPlatform.FogCombo}
+
+
+def device_uses_combo_protocol(device: DeyeApiResponseDeviceInfo) -> bool:
+    """Return True when official ``isUseComboProtocol()`` is true."""
+    return bool(device.get("is_combo")) and device.get("protocol_version") == (
+        COMBO_PROTOCOL_VERSION
+    )
+
+
+def transport_for_device(device: DeyeApiResponseDeviceInfo) -> DeyeDeviceTransport:
+    """Return the official CommandManger path for a device-list entry."""
+    if device_uses_fog_platform(device):
+        return DeyeDeviceTransport.FOG
+    if device_uses_combo_protocol(device):
+        return DeyeDeviceTransport.COMBO
+    return DeyeDeviceTransport.CLASSIC
 
 
 class DeyeApiResponseProductDefinition(TypedDict):
