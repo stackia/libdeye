@@ -39,11 +39,11 @@ class DeyeDeviceState:
         state: str | DeyeApiResponseFogPlatformDeviceProperties,
     ) -> None:
         """Parse a Classic hex state string or Fog property payload."""
-        self.anion_switch: bool = False
-        self.water_pump_switch: bool = False
-        self.power_switch: bool = False
-        self.oscillating_switch: bool = False
-        self.child_lock_switch: bool = False
+        self.anion_switch: bool | None = None
+        self.water_pump_switch: bool | None = None
+        self.power_switch: bool | None = None
+        self.oscillating_switch: bool | None = None
+        self.child_lock_switch: bool | None = None
         self.defrosting: bool = False
         self.water_tank_full: bool = False
         self.fan_running: bool = False
@@ -111,11 +111,11 @@ class DeyeDeviceState:
         self,
         state: DeyeApiResponseFogPlatformDeviceProperties,
     ) -> None:
-        self.anion_switch = bool(state["NegativeIon"])
-        self.water_pump_switch = bool(state["WaterPump"])
-        self.power_switch = bool(state["Power"])
-        self.oscillating_switch = bool(state["SwingingWind"])
-        self.child_lock_switch = bool(state["KeyLock"])
+        self.anion_switch = _optional_flag(state.get("NegativeIon"))
+        self.water_pump_switch = _optional_flag(state.get("WaterPump"))
+        self.power_switch = _optional_flag(state.get("Power"))
+        self.oscillating_switch = _optional_flag(state.get("SwingingWind"))
+        self.child_lock_switch = _optional_flag(state.get("KeyLock"))
         self.defrosting = bool(state["Demisting"])
         self.water_tank_full = bool(state["WaterTank"])
         self.fan_running = bool(state["Fan"])
@@ -124,15 +124,15 @@ class DeyeDeviceState:
         self.target_humidity = state.get("SetHumidity", 60)
         self.environment_temperature = state.get("CurrentAmbientTemperature", 27)
         self.environment_humidity = state.get("CurrentEnvironmentalHumidity", 27)
-
-        # Unused attributes
-        self._coil_temperature = state.get("CurrentCoilTemperature", 27)
-        self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
         self.uv_switch = _optional_flag(state.get("UV"))
         self.prompt_sound = _optional_flag(state.get("PromptSound"))
         self.screen_display = _optional_flag(state.get("Screendisplay"))
         timed_off = state.get("TimedOffHour", state.get("TimedShutdownHourSetting"))
         self.timed_off_hour = _optional_int(timed_off)
+
+        # Unused attributes
+        self._coil_temperature = state.get("CurrentCoilTemperature", 27)
+        self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
 
     def copy(self) -> DeyeDeviceState:
         """Return an independent copy of this state."""

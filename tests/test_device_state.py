@@ -58,6 +58,9 @@ def test_deye_device_state_parse_classic_switches() -> None:
     assert state.oscillating_switch is True
     assert state.child_lock_switch is True
     assert state.defrosting is False
+    assert state.uv_switch is None
+    assert state.prompt_sound is None
+    assert state.screen_display is None
 
 
 def test_deye_device_state_parse_classic_fan_speed() -> None:
@@ -149,7 +152,7 @@ def test_deye_device_state_parse_fog() -> None:
 
 
 def test_deye_device_state_parse_fog_optional_controls() -> None:
-    """Fog GET extras map onto optional command fields."""
+    """Fog GET maps UV/prompt/screen like anion; timed-off stays optional."""
     fog_state: dict[str, object] = {
         "NegativeIon": 0,
         "WaterPump": 0,
@@ -211,6 +214,23 @@ def test_deye_device_state_parse_fog_optional_controls() -> None:
         )
     )
     assert preferred_timer.timed_off_hour == 2
+
+    omitted = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {
+                key: value
+                for key, value in fog_state.items()
+                if key not in {"UV", "PromptSound", "Screendisplay"}
+            },
+        )
+    )
+    assert omitted.uv_switch is None
+    assert omitted.prompt_sound is None
+    assert omitted.screen_display is None
+    assert omitted.anion_switch is False
+    assert "UV" not in omitted.to_command().to_json()
+    assert omitted.to_command().to_json()["NegativeIon"] == 0
 
 
 def test_deye_device_state_copy() -> None:

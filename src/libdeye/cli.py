@@ -126,14 +126,14 @@ def print_device_state(state: DeyeDeviceState) -> None:
     print(f"  Water Pump: {'On' if state.water_pump_switch else 'Off'}")
     print(f"  Oscillating: {'On' if state.oscillating_switch else 'Off'}")
     print(f"  Child Lock: {'On' if state.child_lock_switch else 'Off'}")
-    print(f"  Water Tank Full: {'Yes' if state.water_tank_full else 'No'}")
-    print(f"  Defrosting: {'Yes' if state.defrosting else 'No'}")
     if isinstance(state.uv_switch, bool):
         print(f"  UV: {'On' if state.uv_switch else 'Off'}")
     if isinstance(state.prompt_sound, bool):
         print(f"  Prompt Sound: {'On' if state.prompt_sound else 'Off'}")
     if isinstance(state.screen_display, bool):
         print(f"  Screen Display: {'On' if state.screen_display else 'Off'}")
+    print(f"  Water Tank Full: {'Yes' if state.water_tank_full else 'No'}")
+    print(f"  Defrosting: {'Yes' if state.defrosting else 'No'}")
     if isinstance(state.timed_off_hour, int):
         print(f"  Timed Off Hour: {state.timed_off_hour}")
 

@@ -97,9 +97,6 @@ def test_deye_device_command_to_json() -> None:
         "Power": 1,
         "WindSpeed": 2,
         "SetHumidity": 45,
-        "NegativeIon": 0,
-        "SwingingWind": 0,
-        "WaterPump": 0,
     }
 
     assert command.to_json() == expected_json
@@ -116,6 +113,9 @@ def test_deye_device_command_to_json_all_on() -> None:
         fan_speed=DeyeFanSpeed.HIGH,
         mode=DeyeDeviceMode.CLOTHES_DRYER_MODE,
         target_humidity=70,
+        uv_switch=True,
+        prompt_sound=True,
+        screen_display=True,
     )
 
     expected_json = {
@@ -127,27 +127,45 @@ def test_deye_device_command_to_json_all_on() -> None:
         "NegativeIon": 1,
         "SwingingWind": 1,
         "WaterPump": 1,
+        "UV": 1,
+        "PromptSound": 1,
+        "Screendisplay": 1,
     }
 
     assert command.to_json() == expected_json
 
 
 def test_deye_device_command_to_json_all_off() -> None:
-    """Test to_json() with all features disabled."""
+    """Unset fields are omitted, matching official sendCommand skip-null."""
     command = DeyeDeviceCommand()
+    assert command.to_json() == {}
 
-    expected_json = {
+    command = DeyeDeviceCommand(
+        anion_switch=False,
+        water_pump_switch=False,
+        power_switch=False,
+        oscillating_switch=False,
+        child_lock_switch=False,
+        fan_speed=DeyeFanSpeed.LOW,
+        mode=DeyeDeviceMode.MANUAL_MODE,
+        target_humidity=60,
+        uv_switch=False,
+        prompt_sound=False,
+        screen_display=False,
+    )
+    assert command.to_json() == {
         "KeyLock": 0,
         "Mode": 0,
         "Power": 0,
-        "WindSpeed": 1,  # Default is LOW (1)
+        "WindSpeed": 1,
         "SetHumidity": 60,
         "NegativeIon": 0,
         "SwingingWind": 0,
         "WaterPump": 0,
+        "UV": 0,
+        "PromptSound": 0,
+        "Screendisplay": 0,
     }
-
-    assert command.to_json() == expected_json
 
 
 def test_deye_device_command_to_json_diff() -> None:
@@ -198,6 +216,62 @@ def test_deye_device_command_to_json_diff_from_state() -> None:
     command = DeyeDeviceCommand(power_switch=True)
 
     assert command.to_json_diff(state) == {"Power": 1}
+
+
+def test_deye_device_command_to_json_diff_skip_null_and_timed_off() -> None:
+    """Unset switches are omitted; newly set keys still diff against a gap."""
+    from typing import cast
+
+    from libdeye.cloud_api import DeyeApiResponseFogPlatformDeviceProperties
+    from libdeye.device_state import DeyeDeviceState
+
+    baseline = DeyeDeviceCommand()
+    command = DeyeDeviceCommand(
+        uv_switch=True,
+        prompt_sound=False,
+        screen_display=True,
+        timed_off_hour=2,
+    )
+    assert command.to_json_diff(baseline) == {
+        "UV": 1,
+        "PromptSound": 0,
+        "Screendisplay": 1,
+        "TimedOffHour": 2,
+    }
+
+    state = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {
+                "Power": 0,
+                "Mode": 0,
+                "WindSpeed": 1,
+                "SetHumidity": 60,
+                "NegativeIon": 0,
+                "WaterPump": 0,
+                "SwingingWind": 0,
+                "KeyLock": 0,
+                "Demisting": 0,
+                "WaterTank": 0,
+                "Fan": 0,
+                "CurrentCoilTemperature": 25,
+                "CurrentExhaustTemperature": 25,
+                "CurrentAmbientTemperature": 25,
+                "CurrentEnvironmentalHumidity": 60,
+            },
+        )
+    )
+    assert state.uv_switch is None
+    assert state.prompt_sound is None
+    assert state.screen_display is None
+    assert DeyeDeviceCommand(uv_switch=False).to_json_diff(state) == {"UV": 0}
+    assert DeyeDeviceCommand(uv_switch=True).to_json_diff(state) == {"UV": 1}
+    assert DeyeDeviceCommand(timed_off_hour=2).to_json_diff(state) == {
+        "TimedOffHour": 2
+    }
+
+    both_on = DeyeDeviceCommand(uv_switch=True)
+    assert both_on.to_json_diff(DeyeDeviceCommand(uv_switch=True)) == {}
 
 
 def test_deye_device_command_equality() -> None:
@@ -294,7 +368,7 @@ def test_deye_device_command_default_equality() -> None:
     assert command1 == command2
     assert command1 == command2
 
-    # Create a command with explicit defaults that should equal a default command
+    # Explicit False/0 is not the same as unset (null is skipped in Fog JSON)
     command3 = DeyeDeviceCommand(
         anion_switch=False,
         water_pump_switch=False,
@@ -305,8 +379,9 @@ def test_deye_device_command_default_equality() -> None:
         mode=DeyeDeviceMode.MANUAL_MODE,
         target_humidity=60,
     )
-    assert command1 == command3
-    assert (command1 != command3) is False
+    assert command1 != command3
+    assert command3.to_json()["NegativeIon"] == 0
+    assert "NegativeIon" not in command1.to_json()
 
 
 def test_encode_fog_combo_frame_matches_official_command_manger() -> None:
@@ -353,14 +428,17 @@ def test_encode_fog_combo_frame_matches_official_command_manger() -> None:
     ]
 
 
-def test_deye_device_command_optional_fog_fields() -> None:
-    """Fog extras are omitted until set, then appear in JSON and Classic timer byte."""
+def test_deye_device_command_fog_json_fields() -> None:
+    """Fog JSON skips null Integers, including anion/lock/UV; Sleep is never sent."""
     command = DeyeDeviceCommand()
+    assert command.to_json() == {}
     assert "Sleep" not in command.to_json()
     assert "SetTemperature" not in command.to_json()
     assert command.to_bytes()[5] == 0
 
     command = DeyeDeviceCommand(
+        anion_switch=False,
+        child_lock_switch=True,
         uv_switch=False,
         prompt_sound=True,
         screen_display=False,
@@ -368,6 +446,8 @@ def test_deye_device_command_optional_fog_fields() -> None:
     )
     assert "Sleep" not in command.to_json()
     assert "SetTemperature" not in command.to_json()
+    assert command.to_json()["NegativeIon"] == 0
+    assert command.to_json()["KeyLock"] == 1
     assert command.to_json()["UV"] == 0
     assert command.to_json()["PromptSound"] == 1
     assert command.to_json()["Screendisplay"] == 0

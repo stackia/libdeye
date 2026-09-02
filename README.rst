@@ -238,23 +238,25 @@ with cached ``ProtocolVersion == 0`` send the official companion snapshot
 for each changed property (not a union of every cached key); otherwise
 only changed fields are posted.
 
-``DeyeDeviceCommand`` also carries Fog extras that official dehumidifier
-product JSON optionally defines: ``uv_switch``, ``prompt_sound``,
-``screen_display``, and ``timed_off_hour``.
+``DeyeDeviceCommand.to_json`` matches official
+``FogDeviceManager.sendCommand``: every ``PropertyParam`` Integer is
+skipped when null, including child lock and anion. Unset library fields
+stay ``None`` and are omitted. Classic ``to_bytes`` treats unset
+switches as off.
 
 The product JSON (``uvLight``, ``tone``, ``displayScreen``,
 ``hasDelayer``) only shows or hides those controls, the same way it
 gates anion and oscillating. Use ``get_product_feature_config`` (``uv``,
 ``prompt_sound``, ``screen_display``, ``timed_off``) to decide whether a
-product advertises them. If it does, callers should expose the matching
-command/state fields.
+product advertises them.
 
-The Fog send path does not invent values. ``FogDeviceManager.sendCommand``
-posts a key only when the cached bean or the user action set it.
-``ProtocolVersion == 0`` companions copy ``UV`` and ``TimedOffHour`` from
-cache when present; display, tone, and timer commands stay single-key.
-Unset library fields stay ``None`` and are omitted from Fog JSON. Sleep is
-``DeyeDeviceMode.SLEEP_MODE``.
+Fog GET payloads may omit any of those keys; a missing or invalid value
+stays ``None`` and is not posted. ``ProtocolVersion == 0`` companions
+copy cached non-null Integers for that command's official key set
+(display, tone, and timer stay single-key). Sleep is
+``DeyeDeviceMode.SLEEP_MODE``. ``to_json_diff`` treats omitted keys as
+absent on the baseline, so the first set value is published without the
+caller inventing a placeholder.
 
 .. code-block:: python
 

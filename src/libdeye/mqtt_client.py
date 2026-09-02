@@ -267,6 +267,8 @@ def _fog_v0_payload_for_key(
         return {primary: value}
 
     values = fog_full_snapshot_from_properties(last_properties)
+    # Overlay only keys the command actually serializes. Official
+    # companions use toIntOrNull on the bean and sendCommand skips nulls.
     values.update(command.to_json())
     payload: dict[str, int] = {primary: value}
     for key in companions:

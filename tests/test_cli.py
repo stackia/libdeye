@@ -358,11 +358,11 @@ def test_print_device_state() -> None:
         assert "Water Pump: Off" in output
         assert "Oscillating: On" in output
         assert "Child Lock: Off" in output
-        assert "Water Tank Full: No" in output
-        assert "Defrosting: No" in output
         assert "UV:" not in output
         assert "Prompt Sound:" not in output
         assert "Screen Display:" not in output
+        assert "Water Tank Full: No" in output
+        assert "Defrosting: No" in output
         assert "Timed Off Hour:" not in output
 
 

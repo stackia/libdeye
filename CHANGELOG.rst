@@ -2,6 +2,22 @@
 Changelog
 =========
 
+Unreleased
+==========
+
+Version 3.0.2
+=============
+
+- Align Fog JSON with official ``FogDeviceManager.sendCommand``: every
+  ``PropertyParam`` key is omitted when null, including child lock,
+  anion, UV, prompt sound, and screen display. Unset command/state
+  fields stay ``None``. Classic ``to_bytes`` still treats unset switches
+  as off.
+- ``DeyeDeviceCommand.to_json_diff`` uses ``.get`` so a newly set key
+  still diffs when the baseline omitted it.
+- ``ProtocolVersion == 0`` companions copy cached non-null Integers and
+  do not invent defaults for keys the GET never reported.
+
 Version 3.0.1
 =============
 
