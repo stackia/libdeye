@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import Callable
 import json
 from typing import Any, cast, override
-from unittest.mock import AsyncMock, MagicMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import paho.mqtt.client as mqtt
 import pytest
@@ -12,6 +12,7 @@ import pytest_asyncio
 
 from libdeye.cloud_api import (
     DeyeApiResponseClassicPlatformMqttInfo,
+    DeyeApiResponseDeviceInfo,
     DeyeApiResponseFogPlatformDeviceProperties,
     DeyeApiResponseFogPlatformMqttInfo,
     DeyeApiResponseFogPlatformMqttTopics,
@@ -30,7 +31,7 @@ from libdeye.mqtt_client import (
     DeyeClassicMqttClient,
     DeyeFogComboMqttClient,
     DeyeFogMqttClient,
-    mqtt_client_for_platform,
+    mqtt_client_for_device,
     resolve_fog_command_properties,
 )
 
@@ -664,197 +665,11 @@ class TestDeyeFogMqttClient:
         )
 
     @pytest.mark.asyncio
-    async def test_publish_command_includes_power_for_u20a3_partial_updates(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test U20A3 partial updates preserve its current powered-on state."""
-        product_id = "20eae2ea268511e8829100163e0f811e"
-        device_id = "device456"
-        command = DeyeDeviceCommand(power_switch=True, target_humidity=70)
-        properties = {"SetHumidity": 70}
-
-        await fog_client.publish_command(
-            product_id,
-            device_id,
-            command,
-            properties=properties,
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            device_id, {"SetHumidity": 70, "Power": 1}
-        )
-        assert properties == {"SetHumidity": 70}
-
-    @pytest.mark.asyncio
-    async def test_publish_command_reasserts_mode_for_v58a3_power_on(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test V58A3 wakes in auto mode without publishing target humidity."""
-        product_id = "2b770cba268611e89d4c00163e0c1b21"
-        device_id = "device456"
-        command = DeyeDeviceCommand(
-            power_switch=True,
-            mode=DeyeDeviceMode.AUTO_MODE,
-            target_humidity=25,
-        )
-        properties = {"Power": 1, "SetHumidity": 25}
-
-        await fog_client.publish_command(
-            product_id,
-            device_id,
-            command,
-            properties=properties,
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            device_id,
-            {"Power": 1, "Mode": int(DeyeDeviceMode.AUTO_MODE)},
-        )
-        assert properties == {"Power": 1, "SetHumidity": 25}
-
-    @pytest.mark.asyncio
-    async def test_publish_command_preserves_v58a3_power_for_auto_partial_updates(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test V58A3 auto updates preserve power before omitting humidity."""
-        product_id = "2b770cba268611e89d4c00163e0c1b21"
-        device_id = "device456"
-        command = DeyeDeviceCommand(
-            power_switch=True,
-            mode=DeyeDeviceMode.AUTO_MODE,
-            target_humidity=25,
-        )
-
-        await fog_client.publish_command(
-            product_id,
-            device_id,
-            command,
-            properties={"SetHumidity": 25},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            device_id, {"Power": 1}
-        )
-
-    @pytest.mark.asyncio
-    async def test_publish_command_omits_v58a3_auto_humidity_while_powered_off(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test V58A3 does not publish an empty auto humidity update."""
-        product_id = "2b770cba268611e89d4c00163e0c1b21"
-        command = DeyeDeviceCommand(
-            power_switch=False,
-            mode=DeyeDeviceMode.AUTO_MODE,
-            target_humidity=25,
-        )
-
-        await fog_client.publish_command(
-            product_id,
-            "device456",
-            command,
-            properties={"SetHumidity": 25},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_not_awaited()
-
-    @pytest.mark.asyncio
-    async def test_publish_command_preserves_v58a3_power_for_manual_updates(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test V58A3 manual updates include the current powered-on state."""
-        product_id = "2b770cba268611e89d4c00163e0c1b21"
-        command = DeyeDeviceCommand(
-            power_switch=True,
-            mode=DeyeDeviceMode.MANUAL_MODE,
-            target_humidity=70,
-        )
-
-        await fog_client.publish_command(
-            product_id,
-            "device456",
-            command,
-            properties={"SetHumidity": 70},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            "device456", {"SetHumidity": 70, "Power": 1}
-        )
-
-    @pytest.mark.asyncio
-    async def test_publish_command_does_not_apply_v58a3_quirks_to_other_products(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test generic Fog products keep their power-on auto properties unchanged."""
-        product_id = "product123"
-        device_id = "device456"
-        command = DeyeDeviceCommand(
-            power_switch=True,
-            mode=DeyeDeviceMode.AUTO_MODE,
-            target_humidity=25,
-        )
-
-        await fog_client.publish_command(
-            product_id,
-            device_id,
-            command,
-            properties={"Power": 1, "SetHumidity": 25},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            device_id, {"Power": 1, "SetHumidity": 25}
-        )
-
-    @pytest.mark.asyncio
-    async def test_publish_command_splits_properties_for_u20air(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Test U20Air property updates are sent one per API request."""
-        product_id = "363b686a31ee11efb7203b3cd9717242"
-        device_id = "device456"
-        command = DeyeDeviceCommand(power_switch=True, target_humidity=70)
-
-        await fog_client.publish_command(
-            product_id,
-            device_id,
-            command,
-            properties={"SetHumidity": 70, "Power": 1},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_has_awaits(
-            [
-                call(device_id, {"Power": 1}),
-                call(device_id, {"SetHumidity": 70}),
-            ]
-        )
-        assert (
-            cast(
-                MagicMock, fog_client._cloud_api
-            ).set_fog_platform_device_properties.await_count
-            == 2
-        )
-
-    @pytest.mark.asyncio
     async def test_query_device_state(self, fog_client: DeyeFogMqttClient) -> None:
         """Test query_device_state method."""
-        # Setup
         product_id = "product123"
         device_id = "device456"
 
-        # Test query_device_state
         result = await fog_client.query_device_state(product_id, device_id)
         assert cast(
             MagicMock, fog_client._cloud_api
@@ -865,62 +680,14 @@ class TestDeyeFogMqttClient:
         assert isinstance(result, DeyeDeviceState)
 
     @pytest.mark.asyncio
-    async def test_publish_command_sends_full_state_for_612s(
+    async def test_publish_command_keeps_partial_updates(
         self, fog_client: DeyeFogMqttClient
     ) -> None:
-        """DY-612S treats omitted Fog properties as resets, so send the full state."""
-        product_id = "07dddba41c3011e8829100163e0f811e"
-        command = DeyeDeviceCommand(
-            power_switch=True,
-            anion_switch=True,
-            target_humidity=55,
-            fan_speed=DeyeFanSpeed.HIGH,
-        )
-
-        await fog_client.publish_command(
-            product_id,
-            "device456",
-            command,
-            properties={"NegativeIon": 1},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            "device456", command.to_json()
-        )
-
-    @pytest.mark.asyncio
-    async def test_publish_command_sends_full_state_for_d50a3(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """D50A3 uses the same full-state Fog command behavior as DY-612S."""
-        product_id = "c56f9e0c7d2b11e9829100163e0f811e"
+        """Fog products send caller-supplied diffs when ProtocolVersion is not 0."""
         command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
 
         await fog_client.publish_command(
-            product_id,
-            "device456",
-            command,
-            properties={"SetHumidity": 45},
-        )
-
-        cast(
-            MagicMock, fog_client._cloud_api
-        ).set_fog_platform_device_properties.assert_awaited_once_with(
-            "device456", command.to_json()
-        )
-
-    @pytest.mark.asyncio
-    async def test_publish_command_keeps_partial_updates_for_other_products(
-        self, fog_client: DeyeFogMqttClient
-    ) -> None:
-        """Unmentioned products keep sending Fog diffs, not a full command."""
-        product_id = "c2c2d92c049f11e8829100163e0f811e"  # E12A3
-        command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
-
-        await fog_client.publish_command(
-            product_id,
+            "c2c2d92c049f11e8829100163e0f811e",
             "device456",
             command,
             properties={"SetHumidity": 45},
@@ -937,12 +704,11 @@ class TestDeyeFogMqttClient:
         self, fog_client: DeyeFogMqttClient
     ) -> None:
         """Callers can pass a baseline and let libdeye compute the Fog diff."""
-        product_id = "c2c2d92c049f11e8829100163e0f811e"
         baseline = DeyeDeviceCommand(power_switch=True, target_humidity=50)
         command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
 
         await fog_client.publish_command(
-            product_id,
+            "c2c2d92c049f11e8829100163e0f811e",
             "device456",
             command,
             baseline=baseline,
@@ -959,11 +725,10 @@ class TestDeyeFogMqttClient:
         self, fog_client: DeyeFogMqttClient
     ) -> None:
         """An unchanged baseline should not publish an empty Fog update."""
-        product_id = "c2c2d92c049f11e8829100163e0f811e"
         command = DeyeDeviceCommand(power_switch=True, target_humidity=50)
 
         await fog_client.publish_command(
-            product_id,
+            "c2c2d92c049f11e8829100163e0f811e",
             "device456",
             command,
             baseline=command,
@@ -978,12 +743,11 @@ class TestDeyeFogMqttClient:
         self, fog_client: DeyeFogMqttClient
     ) -> None:
         """Official FogDeviceManager.checkNeedAll uses ProtocolVersion == 0."""
-        product_id = "c2c2d92c049f11e8829100163e0f811e"
         command = DeyeDeviceCommand(power_switch=True, target_humidity=45)
         fog_client._fog_protocol_versions["device456"] = 0
 
         await fog_client.publish_command(
-            product_id,
+            "c2c2d92c049f11e8829100163e0f811e",
             "device456",
             command,
             properties={"SetHumidity": 45},
@@ -1027,24 +791,10 @@ class TestDeyeFogMqttClient:
         assert fog_client._fog_protocol_versions["device456"] == 0
 
 
-def test_resolve_fog_command_properties_full_state_overrides_partial() -> None:
-    """612S always publishes the complete current command state."""
-    command = DeyeDeviceCommand(
-        power_switch=True, target_humidity=40, anion_switch=True
-    )
-    properties = resolve_fog_command_properties(
-        "07dddba41c3011e8829100163e0f811e",
-        command,
-        properties={"NegativeIon": 1},
-    )
-    assert properties == command.to_json()
-
-
 def test_resolve_fog_command_properties_generic_keeps_partial() -> None:
-    """Generic Fog products keep caller-supplied partial updates."""
+    """Caller-supplied partial updates are kept when ProtocolVersion is not 0."""
     command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
     properties = resolve_fog_command_properties(
-        "c2c2d92c049f11e8829100163e0f811e",
         command,
         properties={"SetHumidity": 40},
     )
@@ -1055,7 +805,6 @@ def test_resolve_fog_command_properties_protocol_version_zero_skips_unchanged() 
     """ProtocolVersion == 0 still skips a publish when nothing changed."""
     command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
     properties = resolve_fog_command_properties(
-        "c2c2d92c049f11e8829100163e0f811e",
         command,
         baseline=command,
         protocol_version=0,
@@ -1069,7 +818,6 @@ def test_resolve_fog_command_properties_protocol_version_zero_sends_full() -> No
         power_switch=True, target_humidity=40, anion_switch=True
     )
     properties = resolve_fog_command_properties(
-        "c2c2d92c049f11e8829100163e0f811e",
         command,
         properties={"SetHumidity": 40},
         protocol_version=0,
@@ -1083,7 +831,6 @@ def test_resolve_fog_command_properties_protocol_version_nonzero_keeps_partial()
     """ProtocolVersion != 0 keeps a caller-supplied partial Fog update."""
     command = DeyeDeviceCommand(power_switch=True, target_humidity=40)
     properties = resolve_fog_command_properties(
-        "c2c2d92c049f11e8829100163e0f811e",
         command,
         properties={"SetHumidity": 40},
         protocol_version=1,
@@ -1091,9 +838,39 @@ def test_resolve_fog_command_properties_protocol_version_nonzero_keeps_partial()
     assert properties == {"SetHumidity": 40}
 
 
+def _device_info(
+    platform: int,
+    *,
+    is_combo: bool = False,
+    protocol_version: str = "1.0",
+) -> DeyeApiResponseDeviceInfo:
+    return {
+        "producttype_id": 1,
+        "device_name": "Test",
+        "product_name": "Test",
+        "platform": platform,  # type: ignore[typeddict-item]
+        "mac": "00:00:00:00:00:00",
+        "protocol_version": protocol_version,
+        "gatewaytype": 1,
+        "is_combo": is_combo,
+        "alias": "",
+        "deviceid": "id",
+        "product_id": "product",
+        "role": 1,
+        "device_id": "id",
+        "product_icon": "",
+        "online": True,
+        "product_type": "除湿机",
+        "payload": {},
+        "picture_v3": "",
+        "work_time": 0,
+        "user_count": 1,
+    }
+
+
 @pytest.mark.asyncio
-async def test_mqtt_client_for_platform() -> None:
-    """Classic and FogCombo share Classic MQTT; Fog uses the Fog client."""
+async def test_mqtt_client_for_device() -> None:
+    """Platform 2/3 use Fog HTTP; Combo MQTT is Classic + combo_V1.0."""
     cloud_api = MagicMock(spec=DeyeCloudApi)
     with (
         patch("libdeye.mqtt_client.mqtt.Client", return_value=MagicMock()),
@@ -1102,13 +879,27 @@ async def test_mqtt_client_for_platform() -> None:
             return_value=asyncio.get_running_loop(),
         ),
     ):
-        classic = mqtt_client_for_platform(DeyeIotPlatform.Classic, cloud_api)
-        fog = mqtt_client_for_platform(DeyeIotPlatform.Fog, cloud_api)
-        combo = mqtt_client_for_platform(DeyeIotPlatform.FogCombo, cloud_api)
-        unknown = mqtt_client_for_platform(4, cloud_api)
+        classic = mqtt_client_for_device(
+            _device_info(DeyeIotPlatform.Classic), cloud_api
+        )
+        fog = mqtt_client_for_device(_device_info(DeyeIotPlatform.Fog), cloud_api)
+        platform_3 = mqtt_client_for_device(
+            _device_info(DeyeIotPlatform.FogCombo), cloud_api
+        )
+        combo = mqtt_client_for_device(
+            _device_info(
+                DeyeIotPlatform.Classic,
+                is_combo=True,
+                protocol_version="combo_V1.0",
+            ),
+            cloud_api,
+        )
+        unknown = mqtt_client_for_device(_device_info(4), cloud_api)
 
     assert isinstance(classic, DeyeClassicMqttClient)
     assert not isinstance(classic, DeyeFogComboMqttClient)
     assert isinstance(fog, DeyeFogMqttClient)
+    assert isinstance(platform_3, DeyeFogMqttClient)
     assert isinstance(combo, DeyeFogComboMqttClient)
-    assert isinstance(unknown, DeyeFogMqttClient)
+    assert isinstance(unknown, DeyeClassicMqttClient)
+    assert not isinstance(unknown, DeyeFogComboMqttClient)

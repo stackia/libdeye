@@ -30,11 +30,6 @@ from libdeye.cli import (
 from libdeye.cloud_api import DeyeCloudApi, DeyeIotPlatform
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
 from libdeye.device_state import DeyeDeviceState
-from libdeye.mqtt_client import (
-    DeyeClassicMqttClient,
-    DeyeFogComboMqttClient,
-    DeyeFogMqttClient,
-)
 
 
 @pytest.fixture
@@ -261,36 +256,32 @@ async def test_list_devices_fog_combo_and_unknown_platform() -> None:
         output = "".join(call.args[0] for call in mock_stdout.write.call_args_list)
 
     assert "FogCombo" in output
+    assert "Transport: FOG" in output
     assert "Unknown(4)" in output
+    assert "Transport: CLASSIC" in output
 
 
 @pytest.mark.asyncio
-async def test_get_fog_combo_device_state_uses_combo_client() -> None:
-    """Platform 3 uses Classic MQTT with FogCombo frames, not Fog HTTP."""
+async def test_get_fog_combo_device_state_uses_client() -> None:
+    """Get uses DeyeClient so platform 3 is Fog HTTP, not Combo MQTT."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
-    mock_api.get_device_list.return_value = [
-        {
-            "device_name": "Combo Device",
-            "device_id": "combo_device_id",
-            "product_id": "d71936c6951c11f0a8200242ac480009",
-            "platform": DeyeIotPlatform.FogCombo.value,
-        }
-    ]
-
-    mock_mqtt_client = AsyncMock(spec=DeyeFogComboMqttClient)
     mock_state = MagicMock(spec=DeyeDeviceState)
-    mock_mqtt_client.query_device_state.return_value = mock_state
+    mock_device = MagicMock()
+    mock_device.name = "Combo Device"
+    mock_device.refresh = AsyncMock(return_value=mock_state)
+    mock_client = MagicMock()
+    mock_client.get_device = AsyncMock(return_value=mock_device)
 
     with (
-        patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client),
-        patch("libdeye.cli.print_device_state"),
+        patch("libdeye.cli.DeyeClient", return_value=mock_client),
+        patch("libdeye.cli.print_device_state") as mock_print_state,
     ):
         await get_device_state(mock_api, "combo_device_id")
 
-    mock_mqtt_client.connect.assert_called_once()
-    mock_mqtt_client.query_device_state.assert_called_once_with(
-        "d71936c6951c11f0a8200242ac480009", "combo_device_id"
-    )
+    mock_client.get_device.assert_awaited_once_with("combo_device_id")
+    mock_device.refresh.assert_awaited_once()
+    mock_print_state.assert_called_once_with(mock_state)
+    mock_client.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -371,60 +362,40 @@ def test_print_device_state() -> None:
 async def test_get_device_state() -> None:
     """Test getting device state."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
-    mock_api.get_device_list.return_value = [
-        {
-            "device_name": "Test Device",
-            "device_id": "test_device_id",
-            "product_id": "test_product_id",
-            "platform": DeyeIotPlatform.Classic.value,
-        }
-    ]
-
-    mock_mqtt_client = AsyncMock(spec=DeyeClassicMqttClient)
     mock_state = MagicMock(spec=DeyeDeviceState)
-    mock_mqtt_client.query_device_state.return_value = mock_state
+    mock_device = MagicMock()
+    mock_device.name = "Test Device"
+    mock_device.refresh = AsyncMock(return_value=mock_state)
+    mock_client = MagicMock()
+    mock_client.get_device = AsyncMock(return_value=mock_device)
 
     with (
-        patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client),
+        patch("libdeye.cli.DeyeClient", return_value=mock_client),
         patch("libdeye.cli.print_device_state") as mock_print_state,
     ):
         await get_device_state(mock_api, "test_device_id")
 
-        mock_api.get_device_list.assert_called_once()
-        mock_mqtt_client.connect.assert_called_once()
-        mock_mqtt_client.query_device_state.assert_called_once_with(
-            "test_product_id", "test_device_id"
-        )
+        mock_client.get_device.assert_awaited_once_with("test_device_id")
+        mock_device.refresh.assert_awaited_once()
         mock_print_state.assert_called_once_with(mock_state)
-        mock_mqtt_client.disconnect.assert_called_once()
+        mock_client.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_set_device_state() -> None:
     """Test setting device state."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
-    mock_api.get_device_list.return_value = [
-        {
-            "device_name": "Test Device",
-            "device_id": "test_device_id",
-            "product_id": "test_product_id",
-            "platform": DeyeIotPlatform.Classic.value,
-        }
-    ]
-
-    mock_mqtt_client = AsyncMock(spec=DeyeClassicMqttClient)
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_command = MagicMock()
     mock_state.to_command.return_value = mock_command
+    mock_device = MagicMock()
+    mock_device.name = "Test Device"
+    mock_device.refresh = AsyncMock(return_value=mock_state)
+    mock_device.apply = AsyncMock()
+    mock_client = MagicMock()
+    mock_client.get_device = AsyncMock(return_value=mock_device)
 
-    # Configure AsyncMock to return awaitable values
-    mock_mqtt_client.connect.return_value = None
-    mock_mqtt_client.query_device_state.return_value = mock_state
-    mock_mqtt_client.publish_command.return_value = None
-    mock_mqtt_client.disconnect.return_value = None
-
-    # Mock the wait_for function to return the mock_state directly
-    with patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client):
+    with patch("libdeye.cli.DeyeClient", return_value=mock_client):
         await set_device_state(
             mock_api,
             "test_device_id",
@@ -438,14 +409,10 @@ async def test_set_device_state() -> None:
             child_lock=False,
         )
 
-        mock_api.get_device_list.assert_called_once()
-        mock_mqtt_client.connect.assert_called_once()
-        mock_mqtt_client.query_device_state.assert_called_once_with(
-            "test_product_id", "test_device_id"
-        )
+        mock_client.get_device.assert_awaited_once_with("test_device_id")
+        mock_device.refresh.assert_awaited_once()
         mock_state.to_command.assert_called_once()
 
-        # Check that command properties were set correctly
         assert mock_command.power_switch is True
         assert mock_command.mode is DeyeDeviceMode.AUTO_MODE
         assert mock_command.fan_speed is DeyeFanSpeed.HIGH
@@ -455,94 +422,61 @@ async def test_set_device_state() -> None:
         assert mock_command.oscillating_switch is True
         assert mock_command.child_lock_switch is False
 
-        mock_mqtt_client.publish_command.assert_called_once_with(
-            "test_product_id",
-            "test_device_id",
-            mock_command,
-            baseline=None,
-        )
-        mock_mqtt_client.disconnect.assert_called_once()
+        mock_device.apply.assert_awaited_once_with(mock_command, baseline=mock_state)
+        mock_client.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_set_fog_device_state_publishes_only_changed_properties() -> None:
-    """Test Fog commands publish only properties changed by the CLI invocation."""
+async def test_set_fog_device_state_publishes_with_baseline() -> None:
+    """Fog commands pass the queried state as the apply baseline."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
-    mock_api.get_device_list.return_value = [
-        {
-            "device_name": "Test Device",
-            "device_id": "test_device_id",
-            "product_id": "test_product_id",
-            "platform": DeyeIotPlatform.Fog.value,
-        }
-    ]
-
-    mock_mqtt_client = AsyncMock(spec=DeyeFogMqttClient)
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_command = MagicMock()
     mock_state.to_command.return_value = mock_command
-    mock_mqtt_client.query_device_state.return_value = mock_state
+    mock_device = MagicMock()
+    mock_device.name = "Test Device"
+    mock_device.refresh = AsyncMock(return_value=mock_state)
+    mock_device.apply = AsyncMock()
+    mock_client = MagicMock()
+    mock_client.get_device = AsyncMock(return_value=mock_device)
 
-    with patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client):
+    with patch("libdeye.cli.DeyeClient", return_value=mock_client):
         await set_device_state(
             mock_api,
             "test_device_id",
             target_humidity=30,
         )
 
-    mock_mqtt_client.publish_command.assert_awaited_once_with(
-        "test_product_id",
-        "test_device_id",
-        mock_command,
-        baseline=mock_state,
-    )
-    mock_mqtt_client.disconnect.assert_called_once()
+    mock_device.apply.assert_awaited_once_with(mock_command, baseline=mock_state)
+    mock_client.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio
 async def test_monitor_device() -> None:
     """Test monitoring device."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
-    mock_api.get_device_list.return_value = [
-        {
-            "device_name": "Test Device",
-            "device_id": "test_device_id",
-            "product_id": "test_product_id",
-            "platform": DeyeIotPlatform.Classic.value,
-        }
-    ]
+    mock_device = MagicMock()
+    mock_device.name = "Test Device"
+    mock_device.ensure_connected = AsyncMock()
+    mock_device.subscribe = MagicMock(return_value=lambda: None)
+    mock_client = MagicMock()
+    mock_client.get_device = AsyncMock(return_value=mock_device)
 
-    mock_mqtt_client = AsyncMock(spec=DeyeClassicMqttClient)
-    mock_mqtt_client.connect.return_value = None
-    mock_mqtt_client.disconnect.return_value = None
-    mock_mqtt_client.subscribe_state_change.return_value = lambda: None
-    mock_mqtt_client.subscribe_availability_change.return_value = lambda: None
-
-    # Mock the infinite_future to be a future that we can control
     mock_infinite_future: asyncio.Future[None] = asyncio.Future()
 
     with (
-        patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client),
+        patch("libdeye.cli.DeyeClient", return_value=mock_client),
         patch("asyncio.Future", return_value=mock_infinite_future),
     ):
-        # Start the monitor_device function in a task
         task = asyncio.create_task(monitor_device(mock_api, "test_device_id"))
-
-        # Wait a short time for the function to execute
         await asyncio.sleep(0.1)
-
-        # Now set the result of the infinite_future to exit the function
         mock_infinite_future.set_result(None)
-
-        # Wait for the task to complete
         await task
 
-        # Verify the function executed correctly
-        mock_api.get_device_list.assert_called_once()
-        mock_mqtt_client.connect.assert_called_once()
-        mock_mqtt_client.subscribe_state_change.assert_called_once()
-        mock_mqtt_client.subscribe_availability_change.assert_called_once()
-        mock_mqtt_client.disconnect.assert_called_once()
+        mock_client.get_device.assert_awaited_once_with("test_device_id")
+        mock_device.ensure_connected.assert_awaited_once()
+        mock_device.subscribe.assert_called_once()
+        mock_client.disconnect.assert_called_once()
 
 
 @pytest.mark.asyncio

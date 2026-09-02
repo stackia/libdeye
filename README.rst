@@ -224,80 +224,47 @@ Example Usage
 .. code-block:: python
 
     import asyncio
-    from typing import List
 
     import aiohttp
-    from libdeye.cloud_api import DeyeApiResponseDeviceInfo, DeyeCloudApi, DeyeIotPlatform
-    from libdeye.device_state import DeyeDeviceState
-    from libdeye.mqtt_client import BaseDeyeMqttClient, mqtt_client_for_platform
+    from libdeye import DeyeClient
 
 
     async def main() -> None:
-        async with aiohttp.ClientSession() as client:
-            # You can authenticate with username/password
-            cloud_api = DeyeCloudApi(client, "<phone_number>", "<password>")
-            await cloud_api.authenticate()
+        async with aiohttp.ClientSession() as session:
+            client = DeyeClient.from_credentials(
+                session, "<phone_number>", "<password>"
+            )
+            await client.authenticate()
 
-            # Get the list of devices
-            devices: List[DeyeApiResponseDeviceInfo] = await cloud_api.get_device_list()
+            devices = await client.list_devices()
             if not devices:
                 print("No devices found")
                 return
 
-            # Get the first device
             device = devices[0]
-            product_id: str = device["product_id"]
-            device_id: str = device["device_id"]
-            platform: DeyeIotPlatform = DeyeIotPlatform(device["platform"])
+            print(f"Device: {device.name} (ID: {device.device_id})")
+            print(f"Transport: {device.transport.name}")
 
-            print(f"Device: {device['device_name']} (ID: {device_id})")
-            print(f"Platform: {platform.name}")
-
-            mqtt_client: BaseDeyeMqttClient = mqtt_client_for_platform(
-                platform, cloud_api
-            )
-            await mqtt_client.connect()
-
-            # Query current state
-            state: DeyeDeviceState = await mqtt_client.query_device_state(
-                product_id, device_id
-            )
+            state = await device.refresh()
             print(
-                f"Current humidity: {state.environment_humidity}% (Target: {state.target_humidity}%)"
+                f"Current humidity: {state.environment_humidity}% "
+                f"(Target: {state.target_humidity}%)"
             )
 
-            # Subscribe to state changes
-            def on_state_update(state: DeyeDeviceState) -> None:
+            def on_state_update(state) -> None:
                 print(
-                    f"Device state updated. Current humidity: {state.environment_humidity}% (Target: {state.target_humidity}%)"
+                    f"Device state updated. Current humidity: "
+                    f"{state.environment_humidity}%"
                 )
 
-            # Subscribe to availability changes
-            def on_availability_change(available: bool) -> None:
-                print(
-                    f"Device availability changed: {'Online' if available else 'Offline'}"
-                )
+            device.subscribe(on_state=on_state_update)
 
-            # Set up subscriptions
-            unsubscribe_state = mqtt_client.subscribe_state_change(
-                product_id, device_id, on_state_update
-            )
-            unsubscribe_availability = mqtt_client.subscribe_availability_change(
-                product_id, device_id, on_availability_change
-            )
-
-            # Set target humidity
-            state.target_humidity = 40
-            await mqtt_client.publish_command(product_id, device_id, state.to_command())
+            device.state.target_humidity = 40
+            await device.apply()
 
             await asyncio.sleep(30)
-
-            # Unsubscribe from state changes
-            unsubscribe_state()
-            unsubscribe_availability()
-            mqtt_client.disconnect()
+            client.disconnect()
 
 
-    # Run the example
     if __name__ == "__main__":
         asyncio.run(main())

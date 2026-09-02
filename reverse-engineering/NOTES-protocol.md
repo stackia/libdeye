@@ -101,8 +101,5 @@ platform 3 device, so Combo send is JADX-only (no live send check).
 See [`unpacked/control_panel/dehumidifier/`](unpacked/control_panel/dehumidifier/).
 P40: `Mode` 4 = turbo, `WindSpeed` 5 = auto.
 
-Official send paths do not branch on product id for 612S / D50A3 / U20A3 /
-V58A3 / U20Air / P40. Those `libdeye` product flags were report-side
-workarounds, not APK send rules. Official P40 UI binds panel `Fan` to
-`fan_switch` and `CompressorStatus` to `press_state`; send still uses
-`WindSpeed`, not compressor status.
+Official send paths do not branch on product id. Fog `ProtocolVersion == 0`
+full-params is the only Fog payload rule (`FogDeviceManager.checkNeedAll`).

@@ -5,17 +5,19 @@ Changelog
 Unreleased
 ==========
 
-- Match official Deye Smart 4.2.1 CommandManger routing: FogCombo (platform 3)
-  uses Classic MQTT with ``{2, 17, cmd, value}`` frames instead of Fog HTTP
-  ``set/properties``.
-- Fog HTTP commands follow official ``ProtocolVersion == 0`` full-params
-  behavior. 612S / D50A3 / U20A3 / V58A3 / U20Air product flags stay as
-  reported-product workarounds.
-- Scope Fog command quirks to the products that reported them: DY-612S and
-  D50A3 send a full Fog command state because omitted properties are treated
-  as resets; other Fog products keep partial diffs.
-- Add DYD-P40 product config, ``DeyeFanSpeed.UNKNOWN_SPEED`` (WindSpeed=5),
-  and treat ``CompressorStatus`` as the running indicator for that model.
+- **Breaking:** Follow official Deye Smart 4.2.1 CommandManger routing from
+  each device-list entry. ``platform`` 2 and 3 both use Fog HTTP. Combo MQTT
+  frames ``{2, 17, cmd, value}`` are used only when the device is not Fog and
+  ``is_combo`` is set with ``protocol_version == combo_V1.0``.
+- **Breaking:** Add ``DeyeClient`` / ``DeyeDevice`` so callers do not choose
+  Classic, Fog, or Combo. ``mqtt_client_for_platform`` is removed.
+- **Breaking:** Drop product-specific Fog send workarounds. Fog still sends
+  a full property snapshot when cached ``ProtocolVersion == 0``.
+- **Breaking:** Rename ``DeyeDeviceMode.UNKNOWN_MODE`` to ``TURBO_MODE`` and
+  ``DeyeFanSpeed.UNKNOWN_SPEED`` to ``AUTO``. Add U20Pro modes 7–9.
+- Product capabilities now match official ``control_panel/dehumidifier`` JSON
+  (P40 includes Strong/turbo mode 4; unknown products no longer advertise
+  oscillating or water pump).
 - Require Python 3.14.2+ and align aiohttp, PyJWT, and paho-mqtt with Home Assistant 2026.3.0.
 - Migrate development tooling to uv.
 - Add ``reverse-engineering/`` with Deye Smart 4.2.1 unpack notes, JADX
