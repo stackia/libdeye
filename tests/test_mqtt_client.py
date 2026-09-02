@@ -972,6 +972,33 @@ def test_resolve_fog_command_properties_protocol_version_zero_uses_command_compa
     assert "TimedShutdownHourSetting" not in properties
 
 
+def test_resolve_fog_command_payloads_v0_skips_null_companions() -> None:
+    """Missing GET keys stay off ProtocolVersion 0 POSTs, like toIntOrNull."""
+    payloads = resolve_fog_command_payloads(
+        DeyeDeviceCommand(target_humidity=40),
+        properties={"SetHumidity": 40},
+        protocol_version=0,
+        last_properties={
+            "Power": 1,
+            "Mode": 0,
+            "WindSpeed": 1,
+            "SetHumidity": 50,
+            "KeyLock": 0,
+            "NegativeIon": 0,
+            "SwingingWind": 0,
+            "WaterPump": 0,
+        },
+    )
+    assert len(payloads) == 1
+    payload = payloads[0]
+    assert payload["SetHumidity"] == 40
+    assert payload["NegativeIon"] == 0
+    assert "UV" not in payload
+    assert "PromptSound" not in payload
+    assert "Screendisplay" not in payload
+    assert "Sleep" not in payload
+
+
 def test_resolve_fog_command_payloads_power_omits_swinging_wind() -> None:
     """Official sendPowerCommand does not include SwingingWind."""
     command = DeyeDeviceCommand(power_switch=True, oscillating_switch=True)

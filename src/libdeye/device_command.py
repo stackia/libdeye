@@ -14,26 +14,28 @@ class DeyeDeviceCommand:
 
     def __init__(
         self,
-        anion_switch: bool = False,
-        water_pump_switch: bool = False,
-        power_switch: bool = False,
-        oscillating_switch: bool = False,
-        child_lock_switch: bool = False,
-        fan_speed: DeyeFanSpeed = DeyeFanSpeed.LOW,
-        mode: DeyeDeviceMode = DeyeDeviceMode.MANUAL_MODE,
-        target_humidity: int = 60,
+        anion_switch: bool | None = None,
+        water_pump_switch: bool | None = None,
+        power_switch: bool | None = None,
+        oscillating_switch: bool | None = None,
+        child_lock_switch: bool | None = None,
+        fan_speed: DeyeFanSpeed | None = None,
+        mode: DeyeDeviceMode | None = None,
+        target_humidity: int | None = None,
         *,
-        uv_switch: bool = False,
-        prompt_sound: bool = False,
-        screen_display: bool = False,
+        uv_switch: bool | None = None,
+        prompt_sound: bool | None = None,
+        screen_display: bool | None = None,
         timed_off_hour: int | None = None,
     ) -> None:
         """Initialize the command with the desired device settings.
 
-        UV, prompt sound, and screen display are first-class bools like
-        child lock and anion (default ``False``, always in Fog JSON).
-        Timed-off hour defaults to ``None`` and is omitted from JSON when
-        unset. Sleep is ``DeyeDeviceMode.SLEEP_MODE``.
+        Fog JSON matches ``FogDeviceManager.sendCommand``: every
+        ``PropertyParam`` field is skipped when null, including child lock
+        and anion. Unset library fields stay ``None`` and are omitted.
+        Classic ``to_bytes`` treats unset switches as off and fills fan
+        speed, mode, humidity, and the timer byte with Classic defaults.
+        Sleep is ``DeyeDeviceMode.SLEEP_MODE``.
         """
         self.anion_switch = anion_switch
         self.water_pump_switch = water_pump_switch
@@ -83,6 +85,11 @@ class DeyeDeviceCommand:
         if self.child_lock_switch:
             command_flag |= DeyeDeviceCommandFlag.CHILD_LOCK_SWITCH
 
+        fan_speed = self.fan_speed if self.fan_speed is not None else DeyeFanSpeed.LOW
+        mode = self.mode if self.mode is not None else DeyeDeviceMode.MANUAL_MODE
+        target_humidity = (
+            self.target_humidity if self.target_humidity is not None else 60
+        )
         timed_off_hour = self.timed_off_hour if self.timed_off_hour is not None else 0
 
         return bytes(
@@ -90,8 +97,8 @@ class DeyeDeviceCommand:
                 0x08,
                 0x02,
                 command_flag,
-                (self.fan_speed << 4) | self.mode,
-                self.target_humidity,
+                (fan_speed << 4) | mode,
+                target_humidity,
                 timed_off_hour & 0xFF,
                 0,
                 0,
@@ -101,20 +108,35 @@ class DeyeDeviceCommand:
         )
 
     def to_json(self) -> dict[str, int]:
-        """Get JSON representation of this command."""
-        payload: dict[str, int] = {
-            "KeyLock": int(self.child_lock_switch),
-            "Mode": int(self.mode),
-            "Power": int(self.power_switch),
-            "WindSpeed": int(self.fan_speed),
-            "SetHumidity": self.target_humidity,
-            "NegativeIon": int(self.anion_switch),
-            "SwingingWind": int(self.oscillating_switch),
-            "WaterPump": int(self.water_pump_switch),
-            "UV": int(self.uv_switch),
-            "PromptSound": int(self.prompt_sound),
-            "Screendisplay": int(self.screen_display),
-        }
+        """Fog ``set/properties`` body.
+
+        Official ``sendCommand`` only ``put``s a key when the Integer is
+        non-null. Sleep and target temperature are not dehumidifier
+        command fields.
+        """
+        payload: dict[str, int] = {}
+        if self.child_lock_switch is not None:
+            payload["KeyLock"] = int(self.child_lock_switch)
+        if self.mode is not None:
+            payload["Mode"] = int(self.mode)
+        if self.power_switch is not None:
+            payload["Power"] = int(self.power_switch)
+        if self.uv_switch is not None:
+            payload["UV"] = int(self.uv_switch)
+        if self.fan_speed is not None:
+            payload["WindSpeed"] = int(self.fan_speed)
+        if self.target_humidity is not None:
+            payload["SetHumidity"] = self.target_humidity
+        if self.anion_switch is not None:
+            payload["NegativeIon"] = int(self.anion_switch)
+        if self.oscillating_switch is not None:
+            payload["SwingingWind"] = int(self.oscillating_switch)
+        if self.water_pump_switch is not None:
+            payload["WaterPump"] = int(self.water_pump_switch)
+        if self.prompt_sound is not None:
+            payload["PromptSound"] = int(self.prompt_sound)
+        if self.screen_display is not None:
+            payload["Screendisplay"] = int(self.screen_display)
         if self.timed_off_hour is not None:
             payload["TimedOffHour"] = self.timed_off_hour
         return payload
@@ -124,8 +146,7 @@ class DeyeDeviceCommand:
     ) -> dict[str, int]:
         """Get JSON with only properties that differ from the baseline.
 
-        UV, prompt sound, and screen display are always serialized, like
-        anion. Optional ``TimedOffHour`` is omitted when unset; ``.get``
+        Keys omitted as ``None`` are absent from both payloads. ``.get``
         still treats a missing baseline key as a difference so the first
         set value is published without a placeholder.
         """
