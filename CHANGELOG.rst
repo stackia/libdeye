@@ -2,8 +2,8 @@
 Changelog
 =========
 
-Unreleased
-==========
+Version 3.0.1
+=============
 
 - Align Fog ``ProtocolVersion == 0`` payloads with official
   ``FogDeviceManager`` per-command companion keys instead of posting a
