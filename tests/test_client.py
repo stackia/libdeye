@@ -14,7 +14,11 @@ from libdeye.cloud_api import (
 )
 from libdeye.const import DeyeFanSpeed
 from libdeye.device_state import DeyeDeviceState
-from libdeye.mqtt_client import DeyeClassicMqttClient, DeyeFogMqttClient
+from libdeye.mqtt_client import (
+    DeyeClassicMqttClient,
+    DeyeFogMqttClient,
+    fog_full_snapshot_from_properties,
+)
 
 
 def _info(
@@ -197,3 +201,150 @@ async def test_subscribe_forwards_mqtt_callbacks() -> None:
     mqtt.subscribe_availability_change.assert_called_once()
     unsub_state.assert_called_once()
     unsub_avail.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_from_credentials_authenticate_get_device_and_disconnect() -> None:
+    """Cover DeyeClient credential, lookup, and MQTT pool helpers."""
+    session = MagicMock()
+    cloud_api = MagicMock(spec=DeyeCloudApi)
+    cloud_api.authenticate = AsyncMock()
+    cloud_api.get_device_list = AsyncMock(return_value=[_info()])
+
+    with patch("libdeye.client.DeyeCloudApi", return_value=cloud_api):
+        client = DeyeClient.from_credentials(session, "user", "pass")
+    await client.authenticate()
+    found = await client.get_device("device456")
+    missing = await client.get_device("missing")
+
+    mqtt = MagicMock(spec=DeyeClassicMqttClient)
+    mqtt.connect = AsyncMock()
+    mqtt.disconnect = MagicMock()
+    with patch(
+        "libdeye.client.mqtt_client_type_for_device",
+        return_value=MagicMock(return_value=mqtt),
+    ):
+        assert found is not None
+        await found.ensure_connected()
+        client.disconnect()
+
+    cloud_api.authenticate.assert_awaited_once()
+    assert found is not None
+    assert found.name == "Test Device"
+    assert missing is None
+    mqtt.disconnect.assert_called_once()
+    assert client._mqtt_by_type == {}
+
+
+def test_state_from_fog_payload_and_empty_fallback() -> None:
+    """Fog JSON payload is parsed; empty payload uses the Classic default."""
+    fog_payload = {
+        "Power": 1,
+        "Mode": 0,
+        "WindSpeed": 1,
+        "SetHumidity": 40,
+        "CurrentAmbientTemperature": 22,
+        "CurrentEnvironmentalHumidity": 50,
+        "NegativeIon": 0,
+        "WaterPump": 0,
+        "SwingingWind": 1,
+        "KeyLock": 0,
+        "Demisting": 0,
+        "WaterTank": 0,
+        "Fan": 1,
+        "CurrentCoilTemperature": 22,
+        "CurrentExhaustTemperature": 22,
+    }
+    fog_device = DeyeDevice(
+        DeyeClient(MagicMock(spec=DeyeCloudApi)),
+        _info(DeyeIotPlatform.Fog, payload=fog_payload),
+    )
+    empty_device = DeyeDevice(
+        DeyeClient(MagicMock(spec=DeyeCloudApi)),
+        _info(payload=""),
+    )
+    assert fog_device.reported_state.power_switch is True
+    assert fog_device.reported_state.oscillating_switch is True
+    assert empty_device.reported_state.power_switch is False
+
+
+@pytest.mark.asyncio
+async def test_apply_defaults_to_current_state_command() -> None:
+    """apply() without a command sends state.to_command()."""
+    client = DeyeClient(MagicMock(spec=DeyeCloudApi))
+    device = DeyeDevice(client, _info())
+    mqtt = MagicMock(spec=DeyeClassicMqttClient)
+    mqtt.connect = AsyncMock()
+    mqtt.publish_command = AsyncMock()
+
+    with patch(
+        "libdeye.client.mqtt_client_type_for_device",
+        return_value=MagicMock(return_value=mqtt),
+    ):
+        await device.apply()
+
+    published = mqtt.publish_command.await_args
+    assert published.args[2] == device.state.to_command()
+
+
+@pytest.mark.asyncio
+async def test_request_refresh_classic_rejects_non_classic_mqtt() -> None:
+    """Classic poll requires a Classic MQTT client."""
+    client = DeyeClient(MagicMock(spec=DeyeCloudApi))
+    device = DeyeDevice(client, _info(DeyeIotPlatform.Classic))
+    mqtt = MagicMock(spec=DeyeFogMqttClient)
+    mqtt.connect = AsyncMock()
+
+    with (
+        patch(
+            "libdeye.client.mqtt_client_type_for_device",
+            return_value=MagicMock(return_value=mqtt),
+        ),
+        pytest.raises(TypeError, match="Classic MQTT"),
+    ):
+        await device.request_refresh()
+
+
+@pytest.mark.asyncio
+async def test_subscribe_updates_reported_state_and_availability() -> None:
+    """MQTT callbacks refresh DeyeDevice and forward to callers."""
+    client = DeyeClient(MagicMock(spec=DeyeCloudApi))
+    device = DeyeDevice(client, _info())
+    mqtt = MagicMock(spec=DeyeClassicMqttClient)
+    mqtt.connect = AsyncMock()
+    mqtt.subscribe_state_change = MagicMock(return_value=MagicMock())
+    mqtt.subscribe_availability_change = MagicMock(return_value=MagicMock())
+    seen: dict[str, object] = {}
+
+    with patch(
+        "libdeye.client.mqtt_client_type_for_device",
+        return_value=MagicMock(return_value=mqtt),
+    ):
+        await device.ensure_connected()
+        device.subscribe(
+            on_state=lambda state: seen.update(state=state),
+            on_availability=lambda available: seen.update(available=available),
+        )
+
+    new_state = DeyeDeviceState("14118100113B00000000000000000040300000000000")
+    mqtt.subscribe_state_change.call_args.args[2](new_state)
+    mqtt.subscribe_availability_change.call_args.args[2](False)
+    assert device.reported_state == new_state
+    assert device.available is False
+    assert seen["state"] == new_state
+    assert seen["available"] is False
+
+
+def test_fog_full_snapshot_parses_numbers_and_skips_invalid() -> None:
+    """GET cache values may be ints, integer floats, or decimal strings."""
+    snapshot = fog_full_snapshot_from_properties(
+        {
+            "Power": 1.0,
+            "Sleep": True,
+            "UV": "nope",
+            "Mode": None,
+            "SetHumidity": "45",
+            "TimedShutdownHourSetting": "0",
+        }
+    )
+    assert snapshot == {"Power": 1, "SetHumidity": 45, "TimedOffHour": 0}
