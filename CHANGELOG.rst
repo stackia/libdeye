@@ -5,7 +5,7 @@ Changelog
 Unreleased
 ==========
 
-- Migrate project tooling from PyScaffold, setuptools, and tox to uv.
+- Migrate development tooling to uv.
 
 Version 2.1.3
 =============

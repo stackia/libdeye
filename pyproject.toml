@@ -82,7 +82,7 @@ addopts = [
     "term-missing",
     "--verbose",
 ]
-norecursedirs = ["dist", "build", ".tox"]
+norecursedirs = ["dist", "build"]
 testpaths = ["tests"]
 asyncio_default_fixture_loop_scope = "function"
 

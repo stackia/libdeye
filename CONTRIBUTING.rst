@@ -185,9 +185,8 @@ package:
    The command ``git describe --abbrev=0 --tags`` should return the version you
    are expecting. If you are trying to run CI scripts in a fork repository,
    make sure to push all the tags.
-   You can also try to remove leftover ``*.egg-info`` folders in the ``src``
-   folder or potentially in the root of your project, then recreate the
-   environment with ``uv sync --reinstall``.
+   Recreate the environment with ``uv sync --reinstall`` if the local
+   checkout looks stale.
 
 #. If a newly added dependency is missing after editing ``pyproject.toml``,
    refresh the lockfile and environment::
@@ -259,23 +258,18 @@ on PyPI_, the following steps can be used to release a new version for
 
 
 .. _black: https://pypi.org/project/black/
-.. _CommonMark: https://commonmark.org/
 .. _contribution-guide.org: https://www.contribution-guide.org/
 .. _creating a PR: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
 .. _descriptive commit message: https://chris.beams.io/posts/git-commit
 .. _docstrings: https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
-.. _first-contributions tutorial: https://github.com/firstcontributions/first-contributions
 .. _flake8: https://flake8.pycqa.org/en/stable/
 .. _git: https://git-scm.com
-.. _GitHub's fork and pull request workflow: https://guides.github.com/activities/forking/
 .. _guide created by FreeCodeCamp: https://github.com/FreeCodeCamp/how-to-contribute-to-open-source
-.. _MyST: https://myst-parser.readthedocs.io/en/latest/syntax/syntax.html
 .. _other kinds of contributions: https://opensource.guide/how-to-contribute
 .. _pre-commit: https://pre-commit.com/
 .. _PyPI: https://pypi.org/
 .. _Pytest can drop you: https://docs.pytest.org/en/stable/how-to/failures.html#using-python-library-pdb-with-pytest
 .. _Python Software Foundation's Code of Conduct: https://www.python.org/psf/conduct/
-.. _reStructuredText: https://www.sphinx-doc.org/en/master/usage/restructuredtext/
 .. _Sphinx: https://www.sphinx-doc.org/en/master/
 .. _uv: https://docs.astral.sh/uv/
 
