@@ -4,6 +4,7 @@
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -19,6 +20,13 @@ from .const import (
 )
 from .device_state import DeyeDeviceState
 from .mqtt_client import BaseDeyeMqttClient, DeyeClassicMqttClient, DeyeFogMqttClient
+
+CONFIG_ENV_KEYS = (
+    "DEYE_USERNAME",
+    "DEYE_PASSWORD",
+    "DEYE_AUTH_TOKEN",
+    "DEYE_DEVICE_ID",
+)
 
 
 def load_env_file(env_file: str = ".env") -> dict[str, str]:
@@ -36,6 +44,22 @@ def load_env_file(env_file: str = ".env") -> dict[str, str]:
                 env_vars[key.strip()] = value.strip().strip("'\"")
 
     return env_vars
+
+
+def load_config(env_file: str = ".env") -> dict[str, str]:
+    """Load configuration from a .env file and process environment variables.
+
+    Process environment variables take precedence over values from the .env
+    file, matching the default behavior of python-dotenv and 12-factor app
+    conventions. Command-line arguments are applied separately and take
+    precedence over both.
+    """
+    config = load_env_file(env_file)
+    for key in CONFIG_ENV_KEYS:
+        value = os.environ.get(key)
+        if value is not None:
+            config[key] = value
+    return config
 
 
 async def authenticate(
@@ -416,7 +440,7 @@ def main() -> None:
     parser.add_argument(
         "--env-file",
         default=".env",
-        help="Path to .env file (default: .env in current directory)",
+        help="Path to .env file used as defaults when environment variables are unset (default: .env)",
     )
 
     # Authentication options
@@ -502,10 +526,9 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
-    # Load environment variables from .env file
-    env_vars = load_env_file(args.env_file)
+    # CLI args > process environment variables > .env file
+    env_vars = load_config(args.env_file)
 
-    # Get username and password from command line args or .env file
     username = args.username or env_vars.get("DEYE_USERNAME")
     password = args.password or env_vars.get("DEYE_PASSWORD")
     auth_token = args.token or env_vars.get("DEYE_AUTH_TOKEN")
@@ -513,13 +536,15 @@ def main() -> None:
     # Check if authentication credentials were provided
     if not auth_token and (not username or not password):
         print("Error: You must provide either a token or username and password")
-        print("       via command line arguments or in the .env file.")
+        print(
+            "       via command line arguments, environment variables, or a .env file."
+        )
         print(
             "       Expected environment variables: DEYE_USERNAME, DEYE_PASSWORD, or DEYE_AUTH_TOKEN"
         )
         sys.exit(1)
 
-    # Get device ID from command line args or .env file
+    # Get device ID from command line args, environment, or .env file
     device_id = None
 
     if args.command in ["get", "set", "monitor"]:
@@ -527,7 +552,8 @@ def main() -> None:
 
         if not device_id:
             print(
-                "Error: You must provide device ID via command line arguments or in the .env file."
+                "Error: You must provide device ID via command line arguments, "
+                "environment variables, or a .env file."
             )
             print("       Expected environment variables: DEYE_DEVICE_ID")
             sys.exit(1)
