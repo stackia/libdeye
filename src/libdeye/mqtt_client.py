@@ -391,7 +391,7 @@ class BaseDeyeMqttClient(ABC):
         self._cloud_api = cloud_api
         self._endpoint = ""
         self._topic = ""
-        self._mqtt = mqtt.Client()
+        self._mqtt = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         if tls_context is not None:
             self._mqtt.tls_set_context(tls_context)
         else:
@@ -420,7 +420,11 @@ class BaseDeyeMqttClient(ABC):
 
     def _mqtt_on_connect(
         self,
-        *args: Any,
+        _mqtt: mqtt.Client,
+        _userdata: None,
+        _connect_flags: mqtt.ConnectFlags,
+        _reason_code: mqtt.ReasonCode,
+        _properties: mqtt.Properties | None,
     ) -> None:
         for topic, callbacks in self._subscribers.items():
             if len(callbacks) > 0:
@@ -434,9 +438,11 @@ class BaseDeyeMqttClient(ABC):
         self,
         _mqtt: mqtt.Client,
         _userdata: None,
-        result_code: int,
+        _disconnect_flags: mqtt.DisconnectFlags,
+        reason_code: mqtt.ReasonCode,
+        _properties: mqtt.Properties | None,
     ) -> None:
-        if result_code == 0:  # User initiated disconnect
+        if reason_code == 0:  # User initiated disconnect
             return
 
         # Update MQTT info and wait for it to complete before reconnecting
