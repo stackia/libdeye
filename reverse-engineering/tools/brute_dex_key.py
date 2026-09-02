@@ -2,7 +2,7 @@
 """Brute 360 Jiagu DEX blob keys from qh config + official hash inputs.
 
 Hardcoded paths match the 2026-09-02 unpack workspace (/tmp/deye-apk/...).
-See reverse-engineering/tools/README.md.
+See reverse-engineering/README.md (Failed attempts). This script did not recover DEX.
 """
 from __future__ import annotations
 

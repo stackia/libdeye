@@ -2,7 +2,7 @@
 """Try signature-derived keys against the Jiagu qh DEX tail.
 
 Hardcoded paths match the 2026-09-02 unpack workspace (/tmp/deye-apk/...).
-See reverse-engineering/tools/README.md.
+See reverse-engineering/README.md (Failed attempts). This script did not recover DEX.
 """
 from __future__ import annotations
 

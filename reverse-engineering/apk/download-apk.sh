@@ -42,4 +42,4 @@ if [[ "$actual_md5" != "$EXPECTED_MD5" ]]; then
 fi
 
 echo "OK $APK ($actual_md5)"
-echo "Next: copy/symlink this APK to /tmp/deye-apk/com.deye_4.2.1.apk to reuse tools/unidbg hardcoded paths."
+echo "Next: $(cd "$(dirname "$0")/.." && pwd)/decompile-apk.sh"

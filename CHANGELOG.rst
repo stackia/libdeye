@@ -20,9 +20,9 @@ Unreleased
   oscillating or water pump).
 - Require Python 3.14.2+ and align aiohttp, PyJWT, and paho-mqtt with Home Assistant 2026.3.0.
 - Migrate development tooling to uv.
-- Add ``reverse-engineering/`` with Deye Smart 4.2.1 unpack notes, JADX
-  sources, and the Unidbg/JADX tooling used to recover them. The APK, DEX,
-  and qh blobs are not stored in git.
+- Add ``reverse-engineering/`` with a single README, Yingyongbao download
+  script, decompile script (JSON + Unidbg DEX dump + JADX), and the recovered
+  business sources. The APK, DEX, and qh blobs are not stored in git.
 
 Version 2.1.3
 =============
