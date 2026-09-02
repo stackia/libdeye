@@ -35,9 +35,9 @@ class DeyeIotPlatform(IntEnum):
 def iot_platform_uses_fog_client(platform: int | DeyeIotPlatform) -> bool:
     """Return True when the device should use the Fog MQTT/API path.
 
-    Classic is the only platform that uses the legacy MQTT client. Every other
-    platform value, including FogCombo (3) and any future Deye platform, is
-    served by the Fog client.
+    Classic uses the Classic MQTT client. Every other platform value,
+    including FogCombo (3) and any other Deye platform id, is served by
+    the Fog client.
     """
     return int(platform) != DeyeIotPlatform.Classic
 
