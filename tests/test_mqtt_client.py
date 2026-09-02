@@ -519,6 +519,26 @@ class TestDeyeFogComboMqttClient:
                 )
                 mock_publish.assert_not_called()
 
+    @pytest.mark.asyncio
+    async def test_publish_command_sleep_mode_uses_mode_opcode(
+        self, combo_client: DeyeFogComboMqttClient
+    ) -> None:
+        """Sleep is Mode=6 (opcode 8), not Combo Sleep opcode 15."""
+        command = DeyeDeviceCommand(mode=DeyeDeviceMode.SLEEP_MODE)
+        with patch.object(combo_client._mqtt, "is_connected", return_value=True):
+            with patch.object(combo_client._mqtt, "publish") as mock_publish:
+                await combo_client.publish_command(
+                    "744b6884fb294936b4f73f427507aaa3",
+                    "device456",
+                    command,
+                )
+                payloads = [
+                    call_args[0][1] for call_args in mock_publish.call_args_list
+                ]
+                assert bytes([2, 17, 8, int(DeyeDeviceMode.SLEEP_MODE)]) in payloads
+                assert bytes([2, 17, 15, 1]) not in payloads
+                assert bytes([2, 17, 15, 0]) not in payloads
+
 
 class TestDeyeFogMqttClient:
     """Tests for the DeyeFogMqttClient class."""
@@ -617,6 +637,67 @@ class TestDeyeFogMqttClient:
             mock_subscribe_topic.assert_called_once()
             topic = mock_subscribe_topic.call_args[0][0]
             assert topic == fog_client._topic
+
+    def test_subscribe_state_change_parses_thing_property(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """thing_property payloads become DeyeDeviceState; other biz codes are ignored."""
+        received: list[DeyeDeviceState] = []
+        with patch.object(fog_client, "_subscribe_topic") as mock_subscribe_topic:
+            fog_client.subscribe_state_change(
+                "product123", "device456", received.append
+            )
+            on_payload = mock_subscribe_topic.call_args[0][1]
+
+        properties = {
+            "Power": 1,
+            "Mode": 6,
+            "WindSpeed": 1,
+            "SetHumidity": 45,
+            "NegativeIon": 0,
+            "WaterPump": 0,
+            "SwingingWind": 0,
+            "KeyLock": 0,
+            "Demisting": 0,
+            "WaterTank": 0,
+            "Fan": 1,
+            "UV": 1,
+            "PromptSound": 0,
+            "Screendisplay": 1,
+            "TimedOffHour": 3,
+            "ProtocolVersion": 0,
+        }
+        on_payload(
+            {
+                "device_id": "other",
+                "biz_code": "device_data",
+                "data": {"message_type": "thing_property", "properties": properties},
+            }
+        )
+        on_payload({"device_id": "device456", "biz_code": "device_status", "data": {}})
+        on_payload(
+            {
+                "device_id": "device456",
+                "biz_code": "device_data",
+                "data": {"message_type": "status", "properties": properties},
+            }
+        )
+        assert received == []
+
+        on_payload(
+            {
+                "device_id": "device456",
+                "biz_code": "device_data",
+                "data": {"message_type": "thing_property", "properties": properties},
+            }
+        )
+        assert len(received) == 1
+        assert received[0].mode is DeyeDeviceMode.SLEEP_MODE
+        assert received[0].uv_switch is True
+        assert received[0].prompt_sound is False
+        assert received[0].screen_display is True
+        assert received[0].timed_off_hour == 3
+        assert fog_client._fog_last_properties["device456"]["UV"] == 1
 
     def test_subscribe_availability_change(self, fog_client: DeyeFogMqttClient) -> None:
         """Test subscribe_availability_change method."""
@@ -748,7 +829,6 @@ class TestDeyeFogMqttClient:
             power_switch=True,
             target_humidity=45,
             oscillating_switch=True,
-            sleep_switch=True,
         )
         fog_client._fog_protocol_versions["device456"] = 0
         fog_client._fog_last_properties["device456"] = {
@@ -856,7 +936,6 @@ def test_resolve_fog_command_properties_protocol_version_zero_uses_command_compa
         power_switch=True,
         target_humidity=40,
         oscillating_switch=False,
-        sleep_switch=True,
         prompt_sound=True,
         screen_display=True,
     )

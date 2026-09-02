@@ -338,9 +338,7 @@ def test_print_device_state() -> None:
     mock_state.child_lock_switch = False
     mock_state.water_tank_full = False
     mock_state.defrosting = False
-    mock_state.sleep_switch = None
     mock_state.uv_switch = None
-    mock_state.target_temperature = None
     mock_state.prompt_sound = None
     mock_state.screen_display = None
     mock_state.timed_off_hour = None
@@ -362,6 +360,66 @@ def test_print_device_state() -> None:
         assert "Child Lock: Off" in output
         assert "Water Tank Full: No" in output
         assert "Defrosting: No" in output
+        assert "UV:" not in output
+        assert "Prompt Sound:" not in output
+        assert "Screen Display:" not in output
+        assert "Timed Off Hour:" not in output
+
+
+def test_print_device_state_optional_fog_controls() -> None:
+    """Print UV, tone, display, and timer when Fog reports them."""
+    mock_on = MagicMock(spec=DeyeDeviceState)
+    mock_on.power_switch = True
+    mock_on.mode = DeyeDeviceMode.SLEEP_MODE
+    mock_on.fan_speed = DeyeFanSpeed.LOW
+    mock_on.target_humidity = 50
+    mock_on.environment_humidity = 60
+    mock_on.environment_temperature = 25
+    mock_on.anion_switch = False
+    mock_on.water_pump_switch = False
+    mock_on.oscillating_switch = False
+    mock_on.child_lock_switch = False
+    mock_on.water_tank_full = False
+    mock_on.defrosting = False
+    mock_on.uv_switch = True
+    mock_on.prompt_sound = True
+    mock_on.screen_display = True
+    mock_on.timed_off_hour = 4
+
+    with patch("sys.stdout") as mock_stdout:
+        print_device_state(mock_on)
+        output = "".join(call.args[0] for call in mock_stdout.write.call_args_list)
+        assert "Mode: SLEEP_MODE" in output
+        assert "UV: On" in output
+        assert "Prompt Sound: On" in output
+        assert "Screen Display: On" in output
+        assert "Timed Off Hour: 4" in output
+
+    mock_off = MagicMock(spec=DeyeDeviceState)
+    mock_off.power_switch = False
+    mock_off.mode = DeyeDeviceMode.MANUAL_MODE
+    mock_off.fan_speed = DeyeFanSpeed.LOW
+    mock_off.target_humidity = 50
+    mock_off.environment_humidity = 60
+    mock_off.environment_temperature = 25
+    mock_off.anion_switch = False
+    mock_off.water_pump_switch = False
+    mock_off.oscillating_switch = False
+    mock_off.child_lock_switch = False
+    mock_off.water_tank_full = False
+    mock_off.defrosting = False
+    mock_off.uv_switch = False
+    mock_off.prompt_sound = False
+    mock_off.screen_display = False
+    mock_off.timed_off_hour = 0
+
+    with patch("sys.stdout") as mock_stdout:
+        print_device_state(mock_off)
+        output = "".join(call.args[0] for call in mock_stdout.write.call_args_list)
+        assert "UV: Off" in output
+        assert "Prompt Sound: Off" in output
+        assert "Screen Display: Off" in output
+        assert "Timed Off Hour: 0" in output
 
 
 @pytest.mark.asyncio
@@ -430,6 +488,39 @@ async def test_set_device_state() -> None:
 
         mock_device.apply.assert_awaited_once_with(mock_command, baseline=mock_state)
         mock_client.disconnect.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_set_device_state_optional_fog_controls() -> None:
+    """UV, tone, display, and timer flags are copied onto the command."""
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+    mock_state = MagicMock(spec=DeyeDeviceState)
+    mock_command = MagicMock()
+    mock_state.to_command.return_value = mock_command
+    mock_device = MagicMock()
+    mock_device.name = "Test Device"
+    mock_device.refresh = AsyncMock(return_value=mock_state)
+    mock_device.apply = AsyncMock()
+    mock_client = MagicMock()
+    mock_client.get_device = AsyncMock(return_value=mock_device)
+
+    with patch("libdeye.cli.DeyeClient", return_value=mock_client):
+        await set_device_state(
+            mock_api,
+            "test_device_id",
+            mode=DeyeDeviceMode.SLEEP_MODE,
+            uv=True,
+            prompt_sound=False,
+            screen_display=True,
+            timed_off_hour=3,
+        )
+
+        assert mock_command.mode is DeyeDeviceMode.SLEEP_MODE
+        assert mock_command.uv_switch is True
+        assert mock_command.prompt_sound is False
+        assert mock_command.screen_display is True
+        assert mock_command.timed_off_hour == 3
+        mock_device.apply.assert_awaited_once_with(mock_command, baseline=mock_state)
 
 
 @pytest.mark.asyncio
@@ -585,9 +676,7 @@ async def test_run_cli_set_command() -> None:
     mock_args.water_pump = "off"
     mock_args.oscillating = "on"
     mock_args.child_lock = "off"
-    mock_args.sleep = None
     mock_args.uv = None
-    mock_args.target_temperature = None
     mock_args.prompt_sound = None
     mock_args.screen_display = None
     mock_args.timed_off_hour = None
@@ -612,12 +701,55 @@ async def test_run_cli_set_command() -> None:
             water_pump=False,
             oscillating=True,
             child_lock=False,
-            sleep=None,
             uv=None,
-            target_temperature=None,
             prompt_sound=None,
             screen_display=None,
             timed_off_hour=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_run_cli_set_command_optional_fog_controls() -> None:
+    """CLI on/off strings become bools; sleep is a mode, not a switch."""
+    mock_args = MagicMock(spec=argparse.Namespace)
+    mock_args.command = "set"
+    mock_args.power = None
+    mock_args.mode = "SLEEP_MODE"
+    mock_args.fan_speed = None
+    mock_args.target_humidity = None
+    mock_args.anion = None
+    mock_args.water_pump = None
+    mock_args.oscillating = None
+    mock_args.child_lock = None
+    mock_args.uv = "on"
+    mock_args.prompt_sound = "off"
+    mock_args.screen_display = "on"
+    mock_args.timed_off_hour = 2
+
+    mock_api = AsyncMock(spec=DeyeCloudApi)
+
+    with (
+        patch("libdeye.cli.authenticate", return_value=mock_api) as mock_authenticate,
+        patch("libdeye.cli.set_device_state") as mock_set_device_state,
+    ):
+        await run_cli(mock_args, "test_user", "test_password", None, "test_device_id")
+
+        mock_authenticate.assert_called_once()
+        mock_set_device_state.assert_called_once_with(
+            mock_api,
+            "test_device_id",
+            power=None,
+            mode=DeyeDeviceMode.SLEEP_MODE,
+            fan_speed=None,
+            target_humidity=None,
+            anion=None,
+            water_pump=None,
+            oscillating=None,
+            child_lock=None,
+            uv=True,
+            prompt_sound=False,
+            screen_display=True,
+            timed_off_hour=2,
         )
 
 

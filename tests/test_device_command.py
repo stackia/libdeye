@@ -338,28 +338,37 @@ def test_encode_fog_combo_frame_matches_official_command_manger() -> None:
     assert encode_fog_combo_frame(DeyeFogComboCommand.SLEEP, 1) == bytes([2, 17, 15, 1])
 
     frames = fog_combo_frames_from_properties(
-        {"Power": 1, "SetHumidity": 45, "Unknown": 9}
+        {
+            "Power": 1,
+            "SetHumidity": 45,
+            "Sleep": 1,
+            "SetTemperature": 26,
+            "Unknown": 9,
+        }
     )
-    assert frames == [bytes([2, 17, 1, 1]), bytes([2, 17, 10, 45])]
+    assert frames == [
+        bytes([2, 17, 1, 1]),
+        bytes([2, 17, 10, 45]),
+        bytes([2, 17, 15, 1]),
+    ]
 
 
 def test_deye_device_command_optional_fog_fields() -> None:
     """Fog extras are omitted until set, then appear in JSON and Classic timer byte."""
     command = DeyeDeviceCommand()
     assert "Sleep" not in command.to_json()
+    assert "SetTemperature" not in command.to_json()
     assert command.to_bytes()[5] == 0
 
     command = DeyeDeviceCommand(
-        sleep_switch=True,
         uv_switch=False,
-        target_temperature=26,
         prompt_sound=True,
         screen_display=False,
         timed_off_hour=3,
     )
-    assert command.to_json()["Sleep"] == 1
+    assert "Sleep" not in command.to_json()
+    assert "SetTemperature" not in command.to_json()
     assert command.to_json()["UV"] == 0
-    assert command.to_json()["SetTemperature"] == 26
     assert command.to_json()["PromptSound"] == 1
     assert command.to_json()["Screendisplay"] == 0
     assert command.to_json()["TimedOffHour"] == 3
@@ -367,3 +376,12 @@ def test_deye_device_command_optional_fog_fields() -> None:
 
     other = DeyeDeviceCommand(timed_off_hour=3)
     assert command != other
+
+    sleep_mode = DeyeDeviceCommand(mode=DeyeDeviceMode.SLEEP_MODE)
+    assert sleep_mode.to_json()["Mode"] == int(DeyeDeviceMode.SLEEP_MODE)
+    assert "Sleep" not in sleep_mode.to_json()
+    assert "SetTemperature" not in sleep_mode.to_json()
+
+    uv_on = DeyeDeviceCommand(uv_switch=True)
+    uv_off = DeyeDeviceCommand(uv_switch=False)
+    assert uv_on.to_json_diff(uv_off) == {"UV": 1}
