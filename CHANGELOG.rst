@@ -2,6 +2,11 @@
 Changelog
 =========
 
+Unreleased
+==========
+
+- Migrate development tooling to uv.
+
 Version 2.1.3
 =============
 

@@ -3,8 +3,6 @@
 *.py[cod]
 *.so
 *.cfg
-!.isort.cfg
-!setup.cfg
 *.orig
 *.log
 *.pot
@@ -25,17 +23,13 @@ __pycache__/*
 .idea
 tags
 
-# Package files
-*.egg
-*.eggs/
-.installed.cfg
+# Generated package metadata
 *.egg-info
 
 # Unittest and coverage
 htmlcov/*
 .coverage
 .coverage.*
-.tox
 junit*.xml
 coverage.xml
 .pytest_cache/
@@ -52,7 +46,6 @@ MANIFEST
 
 # Per-project virtualenvs
 .venv*/
-.conda*/
 
 # Environment variables
 .env
