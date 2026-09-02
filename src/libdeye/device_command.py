@@ -125,7 +125,14 @@ class DeyeDeviceCommand:
     def to_json_diff(
         self, baseline: DeyeDeviceCommand | DeyeDeviceState
     ) -> dict[str, int]:
-        """Get JSON with only properties that differ from the baseline."""
+        """Get JSON with only properties that differ from the baseline.
+
+        Optional Fog extras omitted as ``None`` are absent from both JSON
+        payloads. A newly set extra is therefore included, matching official
+        ``sendCommand`` posting a key only after the user action or cache
+        has a value. Callers do not need to invent a baseline for first
+        toggles.
+        """
         baseline_command = (
             baseline
             if isinstance(baseline, DeyeDeviceCommand)
@@ -133,7 +140,11 @@ class DeyeDeviceCommand:
         )
         command_json = self.to_json()
         baseline_json = baseline_command.to_json()
-        return {k: v for k, v in command_json.items() if baseline_json[k] != v}
+        return {
+            key: value
+            for key, value in command_json.items()
+            if baseline_json.get(key) != value
+        }
 
 
 class DeyeFogComboCommand(IntEnum):

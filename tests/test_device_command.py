@@ -200,6 +200,56 @@ def test_deye_device_command_to_json_diff_from_state() -> None:
     assert command.to_json_diff(state) == {"Power": 1}
 
 
+def test_deye_device_command_to_json_diff_new_optional_extras() -> None:
+    """Newly set Fog extras diff against a baseline that never had them."""
+    from typing import cast
+
+    from libdeye.cloud_api import DeyeApiResponseFogPlatformDeviceProperties
+    from libdeye.device_state import DeyeDeviceState
+
+    baseline = DeyeDeviceCommand()
+    command = DeyeDeviceCommand(
+        uv_switch=True,
+        prompt_sound=False,
+        screen_display=True,
+        timed_off_hour=2,
+    )
+    assert command.to_json_diff(baseline) == {
+        "UV": 1,
+        "PromptSound": 0,
+        "Screendisplay": 1,
+        "TimedOffHour": 2,
+    }
+
+    state = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {
+                "Power": 0,
+                "Mode": 0,
+                "WindSpeed": 1,
+                "SetHumidity": 60,
+                "NegativeIon": 0,
+                "WaterPump": 0,
+                "SwingingWind": 0,
+                "KeyLock": 0,
+                "Demisting": 0,
+                "WaterTank": 0,
+                "Fan": 0,
+                "CurrentCoilTemperature": 25,
+                "CurrentExhaustTemperature": 25,
+                "CurrentAmbientTemperature": 25,
+                "CurrentEnvironmentalHumidity": 60,
+            },
+        )
+    )
+    assert state.uv_switch is None
+    assert DeyeDeviceCommand(uv_switch=False).to_json_diff(state) == {"UV": 0}
+
+    both_on = DeyeDeviceCommand(uv_switch=True)
+    assert both_on.to_json_diff(DeyeDeviceCommand(uv_switch=True)) == {}
+
+
 def test_deye_device_command_equality() -> None:
     """Test equality comparison between DeyeDeviceCommand instances."""
     # Test equality with identical instances

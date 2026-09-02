@@ -254,7 +254,9 @@ posts a key only when the cached bean or the user action set it.
 ``ProtocolVersion == 0`` companions copy ``UV`` and ``TimedOffHour`` from
 cache when present; display, tone, and timer commands stay single-key.
 Unset library fields stay ``None`` and are omitted from Fog JSON. Sleep is
-``DeyeDeviceMode.SLEEP_MODE``.
+``DeyeDeviceMode.SLEEP_MODE``. ``to_json_diff`` treats those omitted extras
+as absent on the baseline, so the first user-set value is published without
+the caller inventing a placeholder.
 
 .. code-block:: python
 

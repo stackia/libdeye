@@ -1035,6 +1035,16 @@ def test_resolve_fog_command_payloads_display_tone_timer_are_single_keys() -> No
     ) == [{"TimedOffHour": 3}]
 
 
+def test_resolve_fog_command_payloads_first_optional_extra_toggle() -> None:
+    """A newly set extra is posted when the baseline never had that key."""
+    payloads = resolve_fog_command_payloads(
+        DeyeDeviceCommand(uv_switch=True),
+        baseline=DeyeDeviceCommand(),
+        protocol_version=1,
+    )
+    assert payloads == [{"UV": 1}]
+
+
 def test_resolve_fog_command_payloads_batches_into_official_posts() -> None:
     """Each changed key is one FogDeviceManager command POST."""
     baseline = DeyeDeviceCommand(power_switch=False, target_humidity=50)

@@ -2,6 +2,14 @@
 Changelog
 =========
 
+Unreleased
+==========
+
+- ``DeyeDeviceCommand.to_json_diff`` includes newly set Fog extras when the
+  baseline omitted them (``None``), so callers do not need to synthesize a
+  baseline for the first UV / prompt sound / screen display / timed-off
+  toggle.
+
 Version 3.0.1
 =============
 
