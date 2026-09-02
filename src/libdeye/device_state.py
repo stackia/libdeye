@@ -124,15 +124,15 @@ class DeyeDeviceState:
         self.target_humidity = state.get("SetHumidity", 60)
         self.environment_temperature = state.get("CurrentAmbientTemperature", 27)
         self.environment_humidity = state.get("CurrentEnvironmentalHumidity", 27)
-
-        # Unused attributes
-        self._coil_temperature = state.get("CurrentCoilTemperature", 27)
-        self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
         self.uv_switch = _optional_flag(state.get("UV")) or False
         self.prompt_sound = _optional_flag(state.get("PromptSound")) or False
         self.screen_display = _optional_flag(state.get("Screendisplay")) or False
         timed_off = state.get("TimedOffHour", state.get("TimedShutdownHourSetting"))
         self.timed_off_hour = _optional_int(timed_off)
+
+        # Unused attributes
+        self._coil_temperature = state.get("CurrentCoilTemperature", 27)
+        self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
 
     def copy(self) -> DeyeDeviceState:
         """Return an independent copy of this state."""
