@@ -30,6 +30,7 @@ from libdeye.const import DeyeDeviceMode, DeyeFanSpeed
 from libdeye.device_state import DeyeDeviceState
 from libdeye.mqtt_client import (
     DeyeClassicMqttClient,
+    DeyeFogComboMqttClient,
     DeyeFogMqttClient,
 )
 
@@ -195,8 +196,8 @@ async def test_list_devices_fog_combo_and_unknown_platform() -> None:
 
 
 @pytest.mark.asyncio
-async def test_get_fog_combo_device_state_uses_fog_client() -> None:
-    """Platform 3 uses the Fog MQTT/API client."""
+async def test_get_fog_combo_device_state_uses_combo_client() -> None:
+    """Platform 3 uses Classic MQTT with FogCombo frames, not Fog HTTP."""
     mock_api = AsyncMock(spec=DeyeCloudApi)
     mock_api.get_device_list.return_value = [
         {
@@ -207,16 +208,15 @@ async def test_get_fog_combo_device_state_uses_fog_client() -> None:
         }
     ]
 
-    mock_mqtt_client = AsyncMock(spec=DeyeFogMqttClient)
+    mock_mqtt_client = AsyncMock(spec=DeyeFogComboMqttClient)
     mock_state = MagicMock(spec=DeyeDeviceState)
     mock_mqtt_client.query_device_state.return_value = mock_state
 
-    with patch("libdeye.cli.DeyeFogMqttClient", return_value=mock_mqtt_client), patch(
-        "libdeye.cli.DeyeClassicMqttClient"
-    ) as mock_classic, patch("libdeye.cli.print_device_state"):
+    with patch(
+        "libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client
+    ), patch("libdeye.cli.print_device_state"):
         await get_device_state(mock_api, "combo_device_id")
 
-    mock_classic.assert_not_called()
     mock_mqtt_client.connect.assert_called_once()
     mock_mqtt_client.query_device_state.assert_called_once_with(
         "d71936c6951c11f0a8200242ac480009", "combo_device_id"
@@ -315,7 +315,7 @@ async def test_get_device_state() -> None:
     mock_mqtt_client.query_device_state.return_value = mock_state
 
     with patch(
-        "libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client
+        "libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client
     ), patch("libdeye.cli.print_device_state") as mock_print_state:
         await get_device_state(mock_api, "test_device_id")
 
@@ -353,7 +353,7 @@ async def test_set_device_state() -> None:
     mock_mqtt_client.disconnect.return_value = None
 
     # Mock the wait_for function to return the mock_state directly
-    with patch("libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client):
+    with patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client):
         await set_device_state(
             mock_api,
             "test_device_id",
@@ -412,7 +412,7 @@ async def test_set_fog_device_state_publishes_only_changed_properties() -> None:
     mock_state.to_command.return_value = mock_command
     mock_mqtt_client.query_device_state.return_value = mock_state
 
-    with patch("libdeye.cli.DeyeFogMqttClient", return_value=mock_mqtt_client):
+    with patch("libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client):
         await set_device_state(
             mock_api,
             "test_device_id",
@@ -451,7 +451,7 @@ async def test_monitor_device() -> None:
     mock_infinite_future: asyncio.Future[None] = asyncio.Future()
 
     with patch(
-        "libdeye.cli.DeyeClassicMqttClient", return_value=mock_mqtt_client
+        "libdeye.cli.mqtt_client_for_platform", return_value=mock_mqtt_client
     ), patch("asyncio.Future", return_value=mock_infinite_future):
 
         # Start the monitor_device function in a task

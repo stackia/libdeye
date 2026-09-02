@@ -206,12 +206,12 @@ Example Usage
 .. code-block:: python
 
     import asyncio
-    from typing import List, Optional, Union
+    from typing import List
 
     import aiohttp
     from libdeye.cloud_api import DeyeApiResponseDeviceInfo, DeyeCloudApi, DeyeIotPlatform
     from libdeye.device_state import DeyeDeviceState
-    from libdeye.mqtt_client import DeyeClassicMqttClient, DeyeFogMqttClient
+    from libdeye.mqtt_client import BaseDeyeMqttClient, mqtt_client_for_platform
 
 
     async def main() -> None:
@@ -233,23 +233,12 @@ Example Usage
             platform: DeyeIotPlatform = DeyeIotPlatform(device["platform"])
 
             print(f"Device: {device['device_name']} (ID: {device_id})")
-            print(
-                f"Platform: {'Classic' if platform == DeyeIotPlatform.Classic else 'Fog'}"
+            print(f"Platform: {platform.name}")
+
+            mqtt_client: BaseDeyeMqttClient = mqtt_client_for_platform(
+                platform, cloud_api
             )
-
-            mqtt_client: Optional[Union[DeyeClassicMqttClient, DeyeFogMqttClient]] = None
-
-            # Handle device based on platform
-            if platform == DeyeIotPlatform.Classic:
-                # Create MQTT client for Classic platform
-                mqtt_client = DeyeClassicMqttClient(cloud_api)
-                await mqtt_client.connect()
-            elif platform == DeyeIotPlatform.Fog:
-                # Create MQTT client for Fog platform
-                mqtt_client = DeyeFogMqttClient(cloud_api)
-                await mqtt_client.connect()
-
-            assert mqtt_client is not None
+            await mqtt_client.connect()
 
             # Query current state
             state: DeyeDeviceState = await mqtt_client.query_device_state(

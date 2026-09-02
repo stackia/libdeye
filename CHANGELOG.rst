@@ -2,6 +2,16 @@
 Changelog
 =========
 
+Version 2.1.8
+=============
+
+- Match official Deye Smart 4.2.1 CommandManger routing: FogCombo (platform 3)
+  uses Classic MQTT with ``{2, 17, cmd, value}`` frames instead of Fog HTTP
+  ``set/properties``.
+- Fog HTTP commands follow official ``ProtocolVersion == 0`` full-params
+  behavior. 612S / D50A3 / U20A3 / V58A3 / U20Air product flags stay as
+  reported-product workarounds.
+
 Version 2.1.7
 =============
 

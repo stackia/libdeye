@@ -33,11 +33,26 @@ class DeyeIotPlatform(IntEnum):
 
 
 def iot_platform_uses_fog_client(platform: int | DeyeIotPlatform) -> bool:
-    """Return True when the device should use the Fog MQTT/API path.
+    """Return True when the device should use the Fog HTTP/MQTT path.
 
-    Classic uses the Classic MQTT client. Every other platform value,
-    including FogCombo (3) and any other Deye platform id, is served by
-    the Fog client.
+    Official Deye Smart 4.2.1 CommandManger routing:
+
+    - Fog (2): HTTP ``set/properties`` plus Fog MQTT receive
+    - FogCombo (3): Classic MQTT with ``{2, 17, cmd, value}`` frames
+    - Classic (1): Classic MQTT with the 10-byte command payload
+
+    Unknown platform ids stay on the Fog path; only FogCombo is proven
+    to share Classic MQTT rather than Fog HTTP.
+    """
+    value = int(platform)
+    return value != DeyeIotPlatform.Classic and value != DeyeIotPlatform.FogCombo
+
+
+def iot_platform_sends_partial_commands(platform: int | DeyeIotPlatform) -> bool:
+    """Return True when commands are per-property instead of a full Classic frame.
+
+    Fog sends HTTP JSON properties. FogCombo sends one Classic MQTT frame
+    per changed property. Classic always publishes the full 10-byte command.
     """
     return int(platform) != DeyeIotPlatform.Classic
 

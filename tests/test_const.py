@@ -1,4 +1,8 @@
-from libdeye.cloud_api import DeyeIotPlatform, iot_platform_uses_fog_client
+from libdeye.cloud_api import (
+    DeyeIotPlatform,
+    iot_platform_sends_partial_commands,
+    iot_platform_uses_fog_client,
+)
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed, get_product_feature_config
 
 
@@ -49,9 +53,17 @@ def test_get_product_feature_config() -> None:
 
 
 def test_iot_platform_uses_fog_client() -> None:
-    """Non-classic platforms, including FogCombo, use the Fog client."""
+    """Fog HTTP/MQTT is only for Fog; FogCombo uses Classic MQTT."""
     assert iot_platform_uses_fog_client(DeyeIotPlatform.Classic) is False
     assert iot_platform_uses_fog_client(DeyeIotPlatform.Fog) is True
-    assert iot_platform_uses_fog_client(DeyeIotPlatform.FogCombo) is True
-    assert iot_platform_uses_fog_client(3) is True
+    assert iot_platform_uses_fog_client(DeyeIotPlatform.FogCombo) is False
+    assert iot_platform_uses_fog_client(3) is False
     assert iot_platform_uses_fog_client(4) is True
+
+
+def test_iot_platform_sends_partial_commands() -> None:
+    """Classic publishes a full frame; Fog and FogCombo send per-property updates."""
+    assert iot_platform_sends_partial_commands(DeyeIotPlatform.Classic) is False
+    assert iot_platform_sends_partial_commands(DeyeIotPlatform.Fog) is True
+    assert iot_platform_sends_partial_commands(DeyeIotPlatform.FogCombo) is True
+    assert iot_platform_sends_partial_commands(4) is True
