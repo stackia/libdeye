@@ -1,14 +1,14 @@
 """Tests for the Deye Cloud API module."""
 
+from collections.abc import AsyncGenerator, Generator
 import time
-from typing import AsyncGenerator, Generator
 from unittest.mock import MagicMock, patch
 
+from aiohttp import ClientError, ClientSession
+from aioresponses import aioresponses
 import jwt
 import pytest
 import pytest_asyncio
-from aiohttp import ClientError, ClientSession
-from aioresponses import aioresponses
 
 from libdeye.cloud_api import (
     DeyeApiResponseEnvelope,
@@ -18,20 +18,18 @@ from libdeye.cloud_api import (
     DeyeIotPlatform,
     ensure_valid_response_code,
 )
-from libdeye.const import (
-    DEYE_API_END_USER_ENDPOINT,
-)
+from libdeye.const import DEYE_API_END_USER_ENDPOINT
 
 
 @pytest.fixture
-def mock_aioresponse() -> Generator[aioresponses, None, None]:
+def mock_aioresponse() -> Generator[aioresponses]:
     """Fixture for mocking aiohttp responses."""
     with aioresponses() as m:
         yield m
 
 
 @pytest_asyncio.fixture
-async def api_client() -> AsyncGenerator[DeyeCloudApi, None]:
+async def api_client() -> AsyncGenerator[DeyeCloudApi]:
     """Fixture for creating a DeyeCloudApi client."""
     async with ClientSession() as session:
         client = DeyeCloudApi(
@@ -51,8 +49,7 @@ def mock_auth_token() -> str:
         "enduserid": "test_user_id",
         "exp": exp_time,
     }
-    token = jwt.encode(payload, "secret", algorithm="HS256")
-    return token
+    return jwt.encode(payload, "secret", algorithm="HS256")
 
 
 def test_auth_token_setter_valid(mock_auth_token: str) -> None:
@@ -734,7 +731,7 @@ def test_ensure_valid_response_code() -> None:
         "meta": {"code": 500, "message": "Internal Server Error"},
         "data": {},
     }
-    with pytest.raises(Exception):
+    with pytest.raises(DeyeCloudApiInvalidAuthError):
         ensure_valid_response_code(other_error_response)
 
 

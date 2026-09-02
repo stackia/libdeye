@@ -10,7 +10,7 @@ QUERY_DEVICE_STATE_COMMAND_CLASSIC = b"\x00\x01"
 
 
 class DeyeDeviceMode(IntEnum):
-    """All supported mode"""
+    """All supported mode."""
 
     MANUAL_MODE = 0
     CLOTHES_DRYER_MODE = 1
@@ -22,7 +22,7 @@ class DeyeDeviceMode(IntEnum):
 
 
 class DeyeFanSpeed(IntEnum):
-    """All supported fan speed"""
+    """All supported fan speed."""
 
     STOPPED = 0
     LOW = 1
@@ -32,7 +32,7 @@ class DeyeFanSpeed(IntEnum):
 
 
 class DeyeProductConfig(TypedDict):
-    """Feature config for a specific Deye product"""
+    """Feature config for a specific Deye product."""
 
     mode: list[DeyeDeviceMode]
     fan_speed: list[DeyeFanSpeed]
@@ -48,7 +48,7 @@ class DeyeProductConfig(TypedDict):
 
 
 class DeyeProductPartialConfig(TypedDict, total=False):
-    """Feature config for a specific Deye product (partial)"""
+    """Feature config for a specific Deye product (partial)."""
 
     mode: list[DeyeDeviceMode]
     fan_speed: list[DeyeFanSpeed]
@@ -470,7 +470,7 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
 
 
 def get_product_feature_config(product_id: str) -> DeyeProductConfig:
-    """Get supported features of the product"""
+    """Get supported features of the product."""
     default: DeyeProductConfig = {
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,

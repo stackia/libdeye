@@ -94,7 +94,7 @@ This can easily be done via either |virtualenv|_::
 
 or Miniconda_::
 
-    conda create -n libdeye python=3 six virtualenv pytest pytest-cov
+    conda create -n libdeye python=3.14 virtualenv pytest pytest-cov
     conda activate libdeye
 
 Clone the repository
@@ -144,8 +144,8 @@ Implement your changes
 
    Please make sure to see the validation messages from |pre-commit|_ and fix
    any eventual issues.
-   This should automatically use flake8_/black_ to check/fix the code style
-   in a way that is compatible with the project.
+   This should automatically use ruff_ to check/fix the code style
+   in a way that is compatible with Home Assistant core.
 
    .. important:: Don't forget to add unit tests and documentation in case your
       contribution adds an additional feature and is not just a bugfix.
@@ -206,8 +206,8 @@ package:
 
     tox -r -e docs
 
-#. Make sure to have a reliable |tox|_ installation that uses the correct
-   Python version (e.g., 3.7+). When in doubt you can run::
+#.    Make sure to have a reliable |tox|_ installation that uses the correct
+   Python version (3.14+). When in doubt you can run::
 
     tox --version
     # OR
@@ -276,14 +276,13 @@ on PyPI_, the following steps can be used to release a new version for
 .. |tox| replace:: ``tox``
 
 
-.. _black: https://pypi.org/project/black/
+.. _ruff: https://docs.astral.sh/ruff/
 .. _CommonMark: https://commonmark.org/
 .. _contribution-guide.org: https://www.contribution-guide.org/
 .. _creating a PR: https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request
 .. _descriptive commit message: https://chris.beams.io/posts/git-commit
 .. _docstrings: https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html
 .. _first-contributions tutorial: https://github.com/firstcontributions/first-contributions
-.. _flake8: https://flake8.pycqa.org/en/stable/
 .. _git: https://git-scm.com
 .. _GitHub's fork and pull request workflow: https://guides.github.com/activities/forking/
 .. _guide created by FreeCodeCamp: https://github.com/FreeCodeCamp/how-to-contribute-to-open-source

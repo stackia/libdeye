@@ -14,13 +14,19 @@ jobs:
 
       - uses: actions/setup-python@v7
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - name: Install dependencies
         run: pip install tox
 
+      - name: Run lint
+        run: tox -e lint
+
       - name: Run type check
         run: tox -e mypy -- .
+
+      - name: Run pylint
+        run: tox -e pylint
 
       - name: Run tests
         run: tox -- --cov-report xml --junitxml=junit.xml -o junit_family=legacy

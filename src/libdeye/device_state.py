@@ -1,12 +1,10 @@
-"""Utilities for device state parsing"""
+"""Utilities for device state parsing."""
 
 from enum import IntFlag, auto
+from typing import override
 
 from .cloud_api import DeyeApiResponseFogPlatformDeviceProperties
-from .const import (
-    DeyeDeviceMode,
-    DeyeFanSpeed,
-)
+from .const import DeyeDeviceMode, DeyeFanSpeed
 from .device_command import DeyeDeviceCommand
 
 
@@ -14,6 +12,7 @@ class DeyeDeviceState:
     """A class to store the device state."""
 
     def __init__(self, state: str | DeyeApiResponseFogPlatformDeviceProperties) -> None:
+        """Parse a Classic hex state string or Fog property payload."""
         self.anion_switch: bool = False
         self.water_pump_switch: bool = False
         self.power_switch: bool = False
@@ -99,14 +98,14 @@ class DeyeDeviceState:
         self._coil_temperature = state.get("CurrentCoilTemperature", 27)
         self._exhaust_temperature = state.get("CurrentExhaustTemperature", 27)
 
-    def copy(self) -> "DeyeDeviceState":
+    def copy(self) -> DeyeDeviceState:
         """Return an independent copy of this state."""
         copied = DeyeDeviceState.__new__(DeyeDeviceState)
         copied.__dict__.update(self.__dict__)
         return copied
 
     def to_command(self) -> DeyeDeviceCommand:
-        """Convert to a command that can be used to let the device get into this state"""
+        """Convert to a command that can be used to let the device get into this state."""
         return DeyeDeviceCommand(
             self.anion_switch,
             self.water_pump_switch,
@@ -118,6 +117,7 @@ class DeyeDeviceState:
             self.target_humidity,
         )
 
+    @override
     def __eq__(self, other: object) -> bool:
         """Check if two device states are equal.
 
@@ -144,7 +144,7 @@ class DeyeDeviceState:
 
 
 class DeyeDeviceStateFlag(IntFlag):
-    """Bit flags used in the state string"""
+    """Bit flags used in the state string."""
 
     ANION_SWITCH = auto()
     WATER_PUMP_SWITCH = auto()

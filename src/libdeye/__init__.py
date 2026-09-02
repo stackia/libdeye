@@ -1,3 +1,5 @@
+"""Python library for Deye Cloud and Deye dehumidifier devices."""
+
 from importlib.metadata import PackageNotFoundError, version
 
 try:
