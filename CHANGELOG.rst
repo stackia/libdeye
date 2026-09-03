@@ -10,6 +10,11 @@ Unreleased
 - Fog GET / device-list payloads may omit ``Demisting``, ``WaterTank``, and
   ``Fan``. Parse them like other optional Fog flags and default to off
   instead of raising ``KeyError``.
+- Re-read official dehumidifier JSON for ``anion``, ``swingWind``,
+  ``waterPump``, ``uvLight``, ``tone``, ``displayScreen``, and
+  ``hasDelayer``. Identify ES25A3 / P30 / B13A3 / RT12 from plaintext
+  ``DeviceListBean.isFanDevice`` product IDs. ``be8f5e6a…`` is ES25A3
+  (anion and air-purifier mode), not P30.
 
 Version 3.0.2
 =============

@@ -60,6 +60,9 @@ Supported devices:
 * DYD-P40
 * A10
 * DYD-P30
+* DYD-ES25A3
+* DYD-B13A3
+* DYD-RT12
 * DY-C65DZ/A
 
 For devices not in the above list, consider `adding your own definitions here <https://github.com/stackia/libdeye/blob/master/src/libdeye/const.py>`_.
