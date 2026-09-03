@@ -115,9 +115,9 @@ class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
     CurrentCoilTemperature: int
     CurrentEnvironmentalHumidity: int
     CurrentExhaustTemperature: int
-    Demisting: int
+    Demisting: NotRequired[int]
     EnvironmentalRating: int
-    Fan: int
+    Fan: NotRequired[int]
     KeyLock: int
     Mode: int
     NegativeIon: int
@@ -137,7 +137,7 @@ class DeyeApiResponseFogPlatformDeviceProperties(TypedDict):
     TimedStartupTimeRemainingHours: int
     TimedStartupTimeRemainingMinutes: int
     WaterPump: int
-    WaterTank: int
+    WaterTank: NotRequired[int]
     WindSpeed: int
     fault: dict[str, int]
     Sleep: NotRequired[int]

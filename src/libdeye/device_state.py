@@ -31,6 +31,11 @@ def _optional_flag(value: object) -> bool | None:
     return bool(parsed)
 
 
+def _status_flag(value: object) -> bool:
+    """Parse a Fog diagnostic 0/1 flag, defaulting False when omitted."""
+    return _optional_flag(value) is True
+
+
 class DeyeDeviceState:
     """A class to store the device state."""
 
@@ -116,9 +121,9 @@ class DeyeDeviceState:
         self.power_switch = _optional_flag(state.get("Power"))
         self.oscillating_switch = _optional_flag(state.get("SwingingWind"))
         self.child_lock_switch = _optional_flag(state.get("KeyLock"))
-        self.defrosting = bool(state["Demisting"])
-        self.water_tank_full = bool(state["WaterTank"])
-        self.fan_running = bool(state["Fan"])
+        self.defrosting = _status_flag(state.get("Demisting"))
+        self.water_tank_full = _status_flag(state.get("WaterTank"))
+        self.fan_running = _status_flag(state.get("Fan"))
         self.fan_speed = DeyeFanSpeed(state.get("WindSpeed", DeyeFanSpeed.STOPPED))
         self.mode = DeyeDeviceMode(state.get("Mode", DeyeDeviceMode.SLEEP_MODE))
         self.target_humidity = state.get("SetHumidity", 60)
