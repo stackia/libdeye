@@ -5,6 +5,9 @@ Changelog
 Unreleased
 ==========
 
+Version 3.0.3
+=============
+
 - Construct the paho-mqtt client with ``CallbackAPIVersion.VERSION2`` and
   update ``on_connect`` / ``on_disconnect`` to the v2 callback signatures.
 - Fog GET / device-list payloads may omit ``Demisting``, ``WaterTank``, and
