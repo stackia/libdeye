@@ -61,14 +61,6 @@ _PRODUCT_OFFICIAL_JSON = {
     "7faf2a66c8b811efb3a50242ac480009": "DeyeC65DZ.json",
 }
 
-_JSON_FLAG_KEYS = {
-    "anion": "anion",
-    "oscillating": "swingWind",
-    "water_pump": "waterPump",
-    "uv": "uvLight",
-    "prompt_sound": "tone",
-    "screen_display": "displayScreen",
-}
 
 
 def _device(
@@ -221,8 +213,12 @@ def test_product_flags_match_official_control_panel_json() -> None:
     for product_id, filename in _PRODUCT_OFFICIAL_JSON.items():
         payload = json.loads((_OFFICIAL_JSON_DIR / filename).read_text())
         config = get_product_feature_config(product_id)
-        for flag, json_key in _JSON_FLAG_KEYS.items():
-            assert config[flag] is (json_key in payload), (filename, flag)
+        assert config["anion"] is ("anion" in payload), filename
+        assert config["oscillating"] is ("swingWind" in payload), filename
+        assert config["water_pump"] is ("waterPump" in payload), filename
+        assert config["uv"] is ("uvLight" in payload), filename
+        assert config["prompt_sound"] is ("tone" in payload), filename
+        assert config["screen_display"] is ("displayScreen" in payload), filename
         assert config["timed_off"] is bool(payload.get("hasDelayer")), filename
 
 
