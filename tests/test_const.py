@@ -1,5 +1,8 @@
 """Tests for product feature configuration and official transport routing."""
 
+import json
+from pathlib import Path
+
 from libdeye.cloud_api import (
     DeyeApiResponseDeviceInfo,
     DeyeDeviceTransport,
@@ -9,6 +12,54 @@ from libdeye.cloud_api import (
     transport_for_device,
 )
 from libdeye.const import DeyeDeviceMode, DeyeFanSpeed, get_product_feature_config
+
+_OFFICIAL_JSON_DIR = (
+    Path(__file__).resolve().parents[1]
+    / "reverse-engineering"
+    / "unpacked"
+    / "control_panel"
+    / "dehumidifier"
+)
+
+# product_id → official control-panel JSON. IDs for ES25A3 / P30 / B13A3 / RT12
+# come from plaintext ``DeviceListBean.isFanDevice`` (Java String.hashCode
+# matches PanelHelper / EquipmentFragment).
+_PRODUCT_OFFICIAL_JSON = {
+    "d71936c6951c11f0a8200242ac480009": "DeYeP40A3.json",
+    "07dddba41c3011e8829100163e0f811e": "DeYe612S.json",
+    "e69a5f54983f11ec964d0242ac480009": "DeYeB12A3.json",
+    "c56f9e0c7d2b11e9829100163e0f811e": "DeYeD50A3.json",
+    "86cec9fc5c9811e8829100163e0f811e": "DeYeD50B3.json",
+    "c2c2d92c049f11e8829100163e0f811e": "DeYeE12A3.json",
+    "8d52bc78f38511e89d4c00163e0c1b21": "DeYeG25A3.json",
+    "a3850ae49ea511e89d4c00163e0c1b21": "DeYeN20A3.json",
+    "5ea0feae4b1111ebb73c0242ac480009": "DeYeRLS48A3.json",
+    "2c4bd0861c3011e89d4c00163e0c1b21": "DeYeT22A3.json",
+    "6f97c340a43011e7829100163e0f811e": "DeYeTM208.json",
+    "20eae2ea268511e8829100163e0f811e": "DeYeU20A3.json",
+    "363b686a31ee11efb7203b3cd9717242": "DeYeU20Air.json",
+    "2b770cba268611e89d4c00163e0c1b21": "DeYeV58A3.json",
+    "17ab051af38611e89d4c00163e0c1b21": "DeYeW20A3.json",
+    "06e8c86cca0811e99d4c00163e0c1b21": "DeYeW20A3.json",
+    "d74ab1167d9f11e8829100163e0f811e": "DeYeX20A3.json",
+    "ff71de22187111e99d4c00163e0c1b21": "DeYeZ12A3.json",
+    "1b351ce6187211e99d4c00163e0c1b21": "DeYeZ20B3.json",
+    "82547192d2a811e99d4c00163e0c1b21": "DeYeZ20B3.json",
+    "32c309aa779011ed8cf00242ac480009": "DY890C.json",
+    "764c37606bc711eea9b10242ac480009": "DY890T.json",
+    "edd9a010778f11ed97500242ac480009": "DY6138A.json",
+    "246e3b9a779011ed9a5f0242ac480009": "DY8138C.json",
+    "5b0033e0f65411ee880a0242ac480009": "DeYe6158EB.json",
+    "be47762e6bc711eea54d0242ac480009": "DY8138T.json",
+    "0c44950cc8b811efaf1d0242ac480009": "DeyeY16.json",
+    "a83dfb084b4211f08c060242ac480009": "DYSC60Y.json",
+    "744b6884fb294936b4f73f427507aaa3": "DeYeA10.json",
+    "be8f5e6a893111f0aebc0242ac480009": "DeYeES25A3.json",
+    "537ed2b4d4c111f080e00242ac480009": "DeYeP30.json",
+    "e2d2d33ad99311f0abd90242ac480009": "DeYeB13A3.json",
+    "ef387edadb1011f0830f0242ac480009": "DeYeRT12.json",
+    "7faf2a66c8b811efb3a50242ac480009": "DeyeC65DZ.json",
+}
 
 
 def _device(
@@ -115,13 +166,35 @@ def test_get_product_feature_config() -> None:
     assert a10["timed_off"] is True
     assert DeyeDeviceMode.SLEEP_MODE in a10["mode"]
 
-    p30 = get_product_feature_config("be8f5e6a893111f0aebc0242ac480009")
+    es25a3 = get_product_feature_config("be8f5e6a893111f0aebc0242ac480009")
+    assert es25a3["anion"] is True
+    assert es25a3["oscillating"] is True
+    assert es25a3["prompt_sound"] is True
+    assert es25a3["screen_display"] is True
+    assert es25a3["timed_off"] is True
+    assert DeyeDeviceMode.AIR_PURIFIER_MODE in es25a3["mode"]
+
+    p30 = get_product_feature_config("537ed2b4d4c111f080e00242ac480009")
     assert p30["oscillating"] is True
     assert p30["anion"] is False
     assert p30["prompt_sound"] is True
     assert p30["screen_display"] is True
     assert p30["timed_off"] is True
     assert DeyeDeviceMode.SLEEP_MODE in p30["mode"]
+    assert DeyeDeviceMode.AIR_PURIFIER_MODE not in p30["mode"]
+
+    b13a3 = get_product_feature_config("e2d2d33ad99311f0abd90242ac480009")
+    assert b13a3["anion"] is True
+    assert b13a3["oscillating"] is False
+    assert b13a3["prompt_sound"] is True
+    assert b13a3["timed_off"] is True
+    assert b13a3["fan_speed"] == [DeyeFanSpeed.LOW, DeyeFanSpeed.HIGH]
+
+    rt12 = get_product_feature_config("ef387edadb1011f0830f0242ac480009")
+    assert rt12["anion"] is False
+    assert rt12["prompt_sound"] is True
+    assert rt12["screen_display"] is True
+    assert rt12["timed_off"] is True
 
     c65dz = get_product_feature_config("7faf2a66c8b811efb3a50242ac480009")
     assert c65dz["uv"] is True
@@ -132,6 +205,20 @@ def test_get_product_feature_config() -> None:
 
     tm208 = get_product_feature_config("6f97c340a43011e7829100163e0f811e")
     assert tm208["oscillating"] is True
+
+
+def test_product_flags_match_official_control_panel_json() -> None:
+    """anion/oscillating/pump/uv/tone/display/delayer follow official JSON keys."""
+    for product_id, filename in _PRODUCT_OFFICIAL_JSON.items():
+        payload = json.loads((_OFFICIAL_JSON_DIR / filename).read_text())
+        config = get_product_feature_config(product_id)
+        assert config["anion"] is ("anion" in payload), filename
+        assert config["oscillating"] is ("swingWind" in payload), filename
+        assert config["water_pump"] is ("waterPump" in payload), filename
+        assert config["uv"] is ("uvLight" in payload), filename
+        assert config["prompt_sound"] is ("tone" in payload), filename
+        assert config["screen_display"] is ("displayScreen" in payload), filename
+        assert config["timed_off"] is bool(payload.get("hasDelayer")), filename
 
 
 def test_transport_for_device_follows_official_command_manger() -> None:

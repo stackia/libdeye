@@ -69,10 +69,13 @@ class DeyeProductPartialConfig(TypedDict, total=False):
 
 
 # Mapped from official Deye Smart 4.2.1 ``control_panel/dehumidifier/*.json``.
-# Products without a dedicated JSON keep their previously known UI capabilities.
-# ``uv`` / ``prompt_sound`` / ``screen_display`` / ``timed_off`` inherit False
-# unless a product JSON defines ``uvLight``, ``tone``, ``displayScreen``, or
-# ``hasDelayer``.
+# Official ``DehumidifierControlPanelUIAty.initViews`` hides a control when
+# the JSON object is null; delayed shutdown uses ``hasDelayer``.
+# ``anion`` / ``swingWind`` / ``waterPump`` / ``uvLight`` / ``tone`` /
+# ``displayScreen`` / ``hasDelayer`` → ``anion`` / ``oscillating`` /
+# ``water_pump`` / ``uv`` / ``prompt_sound`` / ``screen_display`` /
+# ``timed_off``. Products without a dedicated JSON keep their previously
+# known UI capabilities; extras inherit False.
 PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
     "d71936c6951c11f0a8200242ac480009": {  # DYD-P40
         "mode": [
@@ -626,7 +629,29 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "screen_display": True,
         "timed_off": True,
     },
-    "be8f5e6a893111f0aebc0242ac480009": {  # P30
+    "be8f5e6a893111f0aebc0242ac480009": {  # ES25A3
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+            DeyeDeviceMode.AIR_PURIFIER_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": True,
+        "oscillating": True,
+        "water_pump": False,
+        "uv": False,
+        "prompt_sound": True,
+        "screen_display": True,
+        "timed_off": True,
+    },
+    "537ed2b4d4c111f080e00242ac480009": {  # P30
         "mode": [
             DeyeDeviceMode.MANUAL_MODE,
             DeyeDeviceMode.CLOTHES_DRYER_MODE,
@@ -641,6 +666,47 @@ PRODUCT_FEATURE_CONFIG: dict[str, DeyeProductPartialConfig] = {
         "max_target_humidity": 70,
         "anion": False,
         "oscillating": True,
+        "water_pump": False,
+        "uv": False,
+        "prompt_sound": True,
+        "screen_display": True,
+        "timed_off": True,
+    },
+    "e2d2d33ad99311f0abd90242ac480009": {  # B13A3
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.HIGH,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": True,
+        "oscillating": False,
+        "water_pump": False,
+        "uv": False,
+        "prompt_sound": True,
+        "screen_display": True,
+        "timed_off": True,
+    },
+    "ef387edadb1011f0830f0242ac480009": {  # RT12
+        "mode": [
+            DeyeDeviceMode.MANUAL_MODE,
+            DeyeDeviceMode.CLOTHES_DRYER_MODE,
+            DeyeDeviceMode.SLEEP_MODE,
+        ],
+        "fan_speed": [
+            DeyeFanSpeed.LOW,
+            DeyeFanSpeed.MIDDLE,
+            DeyeFanSpeed.HIGH,
+        ],
+        "min_target_humidity": 40,
+        "max_target_humidity": 70,
+        "anion": False,
+        "oscillating": False,
         "water_pump": False,
         "uv": False,
         "prompt_sound": True,
