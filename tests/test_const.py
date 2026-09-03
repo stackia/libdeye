@@ -62,7 +62,6 @@ _PRODUCT_OFFICIAL_JSON = {
 }
 
 
-
 def _device(
     platform: int,
     *,
