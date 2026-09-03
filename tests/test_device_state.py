@@ -233,6 +233,38 @@ def test_deye_device_state_parse_fog_optional_controls() -> None:
     assert omitted.to_command().to_json()["NegativeIon"] == 0
 
 
+def test_deye_device_state_fog_omitted_diagnostic_flags() -> None:
+    """Demisting, WaterTank, and Fan default to off when the Fog payload omits them."""
+    fog_state: dict[str, object] = {
+        "Power": 1,
+        "Mode": 0,
+        "WindSpeed": 1,
+        "SetHumidity": 45,
+    }
+    state = DeyeDeviceState(cast(DeyeApiResponseFogPlatformDeviceProperties, fog_state))
+    assert state.defrosting is False
+    assert state.water_tank_full is False
+    assert state.fan_running is False
+    assert state.power_switch is True
+
+    empty = DeyeDeviceState(cast(DeyeApiResponseFogPlatformDeviceProperties, {}))
+    assert empty.defrosting is False
+    assert empty.water_tank_full is False
+    assert empty.fan_running is False
+    assert empty.anion_switch is None
+    assert empty.child_lock_switch is None
+
+    string_flags = DeyeDeviceState(
+        cast(
+            DeyeApiResponseFogPlatformDeviceProperties,
+            {**fog_state, "Demisting": "1", "WaterTank": "0", "Fan": "1"},
+        )
+    )
+    assert string_flags.defrosting is True
+    assert string_flags.water_tank_full is False
+    assert string_flags.fan_running is True
+
+
 def test_deye_device_state_copy() -> None:
     """Test copy() returns an independent state."""
     state = DeyeDeviceState("14118100113B00000000000000000040300000000000")

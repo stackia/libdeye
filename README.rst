@@ -250,8 +250,9 @@ gates anion and oscillating. Use ``get_product_feature_config`` (``uv``,
 ``prompt_sound``, ``screen_display``, ``timed_off``) to decide whether a
 product advertises them.
 
-Fog GET payloads may omit any of those keys; a missing or invalid value
-stays ``None`` and is not posted. ``ProtocolVersion == 0`` companions
+Fog GET and device-list payloads may omit any Fog key. Optional controls
+stay ``None`` and are not posted. Diagnostic flags ``Demisting``,
+``WaterTank``, and ``Fan`` default to off. ``ProtocolVersion == 0`` companions
 copy cached non-null Integers for that command's official key set
 (display, tone, and timer stay single-key). Sleep is
 ``DeyeDeviceMode.SLEEP_MODE``. ``to_json_diff`` treats omitted keys as

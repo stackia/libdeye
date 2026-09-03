@@ -7,6 +7,9 @@ Unreleased
 
 - Construct the paho-mqtt client with ``CallbackAPIVersion.VERSION2`` and
   update ``on_connect`` / ``on_disconnect`` to the v2 callback signatures.
+- Fog GET / device-list payloads may omit ``Demisting``, ``WaterTank``, and
+  ``Fan``. Parse them like other optional Fog flags and default to off
+  instead of raising ``KeyError``.
 
 Version 3.0.2
 =============

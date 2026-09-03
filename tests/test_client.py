@@ -269,6 +269,21 @@ def test_state_from_fog_payload_and_empty_fallback() -> None:
     assert fog_device.reported_state.oscillating_switch is True
     assert empty_device.reported_state.power_switch is False
 
+    omitted = DeyeDevice(
+        DeyeClient(MagicMock(spec=DeyeCloudApi)),
+        _info(DeyeIotPlatform.Fog, payload={"Power": 1, "Mode": 0}),
+    )
+    empty_dict = DeyeDevice(
+        DeyeClient(MagicMock(spec=DeyeCloudApi)),
+        _info(DeyeIotPlatform.Fog, payload={}),
+    )
+    assert omitted.reported_state.power_switch is True
+    assert omitted.reported_state.defrosting is False
+    assert omitted.reported_state.water_tank_full is False
+    assert omitted.reported_state.fan_running is False
+    assert empty_dict.reported_state.defrosting is False
+    assert empty_dict.reported_state.power_switch is None
+
 
 @pytest.mark.asyncio
 async def test_apply_defaults_to_current_state_command() -> None:

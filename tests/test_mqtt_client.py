@@ -717,6 +717,33 @@ class TestDeyeFogMqttClient:
         assert received[0].timed_off_hour == 3
         assert fog_client._fog_last_properties["device456"]["UV"] == 1
 
+    def test_subscribe_state_change_omitted_diagnostic_flags(
+        self, fog_client: DeyeFogMqttClient
+    ) -> None:
+        """thing_property snapshots without Demisting/WaterTank/Fan still parse."""
+        received: list[DeyeDeviceState] = []
+        with patch.object(fog_client, "_subscribe_topic") as mock_subscribe_topic:
+            fog_client.subscribe_state_change(
+                "product123", "device456", received.append
+            )
+            on_payload = mock_subscribe_topic.call_args[0][1]
+
+        on_payload(
+            {
+                "device_id": "device456",
+                "biz_code": "device_data",
+                "data": {
+                    "message_type": "thing_property",
+                    "properties": {"Power": 1, "Mode": 0},
+                },
+            }
+        )
+        assert len(received) == 1
+        assert received[0].power_switch is True
+        assert received[0].defrosting is False
+        assert received[0].water_tank_full is False
+        assert received[0].fan_running is False
+
     def test_subscribe_availability_change(self, fog_client: DeyeFogMqttClient) -> None:
         """Test subscribe_availability_change method."""
         callback = MagicMock()
