@@ -17,6 +17,7 @@ from libdeye.cloud_api import (
     DeyeApiResponseFogPlatformMqttInfo,
     DeyeApiResponseFogPlatformMqttTopics,
     DeyeCloudApi,
+    DeyeCloudApiCannotConnectError,
     DeyeIotPlatform,
 )
 from libdeye.const import (
@@ -178,11 +179,143 @@ class TestBaseDeyeMqttClient:
             )
             mock_run_coroutine_threadsafe.assert_not_called()
 
-    def test_mqtt_on_disconnect_unexpected(
+    @staticmethod
+    async def _unexpected_disconnect(client: MockBaseDeyeMqttClient) -> None:
+        """Invoke on_disconnect from a worker thread, like paho's network loop."""
+        await asyncio.to_thread(
+            client._mqtt_on_disconnect,
+            client._mqtt,
+            None,
+            mqtt.DisconnectFlags(False),
+            mqtt.ReasonCode(mqtt.PacketTypes.DISCONNECT, "Unspecified error"),
+            None,
+        )
+
+    @pytest.mark.asyncio
+    async def test_mqtt_on_disconnect_unexpected_refreshes_in_background(
         self, base_client: MockBaseDeyeMqttClient
     ) -> None:
-        """Test _mqtt_on_disconnect method with unexpected disconnect."""
-        with patch("asyncio.run_coroutine_threadsafe") as mock_run_coroutine_threadsafe:
+        """Test an unexpected disconnect refreshes MQTT info without blocking paho."""
+        release = asyncio.Event()
+
+        async def slow_set_mqtt_info() -> None:
+            await release.wait()
+
+        with patch.object(
+            base_client, "_set_mqtt_info", AsyncMock(side_effect=slow_set_mqtt_info)
+        ) as mock_set_mqtt_info:
+            await self._unexpected_disconnect(base_client)
+
+            # The callback returned while the refresh is still pending.
+            assert base_client._mqtt_info_refresh is not None
+            assert not base_client._mqtt_info_refresh.done()
+
+            release.set()
+            await asyncio.wrap_future(base_client._mqtt_info_refresh)
+            mock_set_mqtt_info.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_mqtt_on_disconnect_refresh_failure_is_logged(
+        self, base_client: MockBaseDeyeMqttClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test a cloud failure during refresh never reaches paho's thread."""
+        error = DeyeCloudApiCannotConnectError()
+        error.__cause__ = OSError("Timeout while contacting DNS servers")
+        with patch.object(base_client, "_set_mqtt_info", AsyncMock(side_effect=error)):
+            await self._unexpected_disconnect(base_client)
+            assert base_client._mqtt_info_refresh is not None
+            await asyncio.wrap_future(base_client._mqtt_info_refresh)
+
+        assert base_client._mqtt_info_refresh.exception() is None
+        assert "Timeout while contacting DNS servers" in caplog.text
+        assert "reconnecting with the previous credentials" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_mqtt_on_disconnect_refresh_timeout_is_logged(
+        self, base_client: MockBaseDeyeMqttClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test a hanging cloud request is bounded and logged."""
+
+        async def hang() -> None:
+            await asyncio.sleep(60)
+
+        with (
+            patch("libdeye.mqtt_client.MQTT_INFO_REFRESH_TIMEOUT", 0.01),
+            patch.object(base_client, "_set_mqtt_info", AsyncMock(side_effect=hang)),
+        ):
+            await self._unexpected_disconnect(base_client)
+            assert base_client._mqtt_info_refresh is not None
+            await asyncio.wrap_future(base_client._mqtt_info_refresh)
+
+        assert base_client._mqtt_info_refresh.exception() is None
+        assert "TimeoutError" in caplog.text
+
+    @pytest.mark.asyncio
+    async def test_mqtt_on_disconnect_skips_duplicate_refresh(
+        self, base_client: MockBaseDeyeMqttClient
+    ) -> None:
+        """Test repeated disconnects share one in-flight refresh."""
+        release = asyncio.Event()
+
+        async def slow_set_mqtt_info() -> None:
+            await release.wait()
+
+        with patch.object(
+            base_client, "_set_mqtt_info", AsyncMock(side_effect=slow_set_mqtt_info)
+        ) as mock_set_mqtt_info:
+            await self._unexpected_disconnect(base_client)
+            first = base_client._mqtt_info_refresh
+            await self._unexpected_disconnect(base_client)
+            assert base_client._mqtt_info_refresh is first
+
+            release.set()
+            assert first is not None
+            await asyncio.wrap_future(first)
+            mock_set_mqtt_info.assert_awaited_once()
+
+            # Once finished, the next disconnect refreshes again.
+            await self._unexpected_disconnect(base_client)
+            second = base_client._mqtt_info_refresh
+            assert second is not None
+            assert second is not first
+            await asyncio.wrap_future(second)
+            assert mock_set_mqtt_info.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_disconnect_cancels_pending_refresh(
+        self, base_client: MockBaseDeyeMqttClient
+    ) -> None:
+        """Test disconnect() cancels a refresh that is still in flight."""
+
+        async def hang() -> None:
+            await asyncio.sleep(60)
+
+        with (
+            patch.object(base_client, "_set_mqtt_info", AsyncMock(side_effect=hang)),
+            patch.object(base_client._mqtt, "disconnect") as mock_disconnect,
+            patch.object(base_client._mqtt, "loop_stop") as mock_loop_stop,
+        ):
+            await self._unexpected_disconnect(base_client)
+            pending = base_client._mqtt_info_refresh
+            assert pending is not None
+
+            base_client.disconnect()
+            await asyncio.sleep(0)
+
+        assert pending.cancelled()
+        assert base_client._mqtt_info_refresh is None
+        mock_disconnect.assert_called_once()
+        mock_loop_stop.assert_called_once()
+
+    def test_mqtt_on_disconnect_with_closed_event_loop(
+        self, base_client: MockBaseDeyeMqttClient
+    ) -> None:
+        """Test a disconnect after the event loop closed is a no-op."""
+        closed_loop = asyncio.new_event_loop()
+        closed_loop.close()
+        base_client._loop = closed_loop
+
+        with patch.object(base_client, "_set_mqtt_info") as mock_set_mqtt_info:
             base_client._mqtt_on_disconnect(
                 base_client._mqtt,
                 None,
@@ -190,7 +323,9 @@ class TestBaseDeyeMqttClient:
                 mqtt.ReasonCode(mqtt.PacketTypes.DISCONNECT, "Unspecified error"),
                 None,
             )
-            mock_run_coroutine_threadsafe.assert_called_once()
+
+        assert base_client._mqtt_info_refresh is None
+        mock_set_mqtt_info.assert_not_called()
 
     def test_mqtt_on_message(self, base_client: MockBaseDeyeMqttClient) -> None:
         """Test _mqtt_on_message method."""

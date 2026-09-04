@@ -5,6 +5,15 @@ Changelog
 Unreleased
 ==========
 
+- Fix the MQTT client never recovering from an unexpected disconnect when the
+  cloud API is unreachable at that moment (for example a DNS timeout during a
+  router reboot). ``on_disconnect`` blocked paho's network thread on the event
+  loop and let ``DeyeCloudApiCannotConnectError`` escape, which terminated the
+  thread: the client never reconnected while ``is_connected()`` still returned
+  True and published commands were silently dropped. The MQTT-info refresh now
+  runs in the background with a bounded timeout, failures are logged, and paho
+  keeps reconnecting on its own (`#67 <https://github.com/stackia/libdeye/issues/67>`_).
+
 Version 3.0.3
 =============
 

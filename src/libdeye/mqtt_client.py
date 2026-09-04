@@ -4,7 +4,9 @@ from abc import ABC, abstractmethod
 import asyncio
 from asyncio import Future, get_running_loop
 from collections.abc import Callable
+import concurrent.futures
 import json
+import logging
 from ssl import SSLContext
 from typing import Any, cast, override
 
@@ -20,6 +22,14 @@ from .cloud_api import (
 from .const import QUERY_DEVICE_STATE_COMMAND_CLASSIC
 from .device_command import DeyeDeviceCommand, fog_combo_frames_from_properties
 from .device_state import DeyeDeviceState
+
+_LOGGER = logging.getLogger(__name__)
+
+# Upper bound for re-fetching MQTT credentials after an unexpected disconnect.
+# The cloud is often unreachable at that moment (the disconnect and the cloud
+# outage usually share a cause), so this must not wait for aiohttp's much
+# longer default total timeout.
+MQTT_INFO_REFRESH_TIMEOUT = 30
 
 FogCommandBaseline = DeyeDeviceCommand | DeyeDeviceState
 
@@ -401,6 +411,7 @@ class BaseDeyeMqttClient(ABC):
         self._mqtt.on_disconnect = self._mqtt_on_disconnect
         self._subscribers: dict[str, set[Callable[[Any], None]]] = {}
         self._pending_commands: list[tuple[str, bytes]] = []
+        self._mqtt_info_refresh: concurrent.futures.Future[None] | None = None
 
     @abstractmethod
     async def _set_mqtt_info(self) -> None:
@@ -415,6 +426,9 @@ class BaseDeyeMqttClient(ABC):
 
     def disconnect(self) -> None:
         """Disconnect the MQTT client to the server."""
+        if self._mqtt_info_refresh is not None:
+            self._mqtt_info_refresh.cancel()
+            self._mqtt_info_refresh = None
         self._mqtt.disconnect()
         self._mqtt.loop_stop()
 
@@ -445,9 +459,38 @@ class BaseDeyeMqttClient(ABC):
         if reason_code == 0:  # User initiated disconnect
             return
 
-        # Update MQTT info and wait for it to complete before reconnecting
-        # (reconnect is automatically handled by paho-mqtt by default)
-        asyncio.run_coroutine_threadsafe(self._set_mqtt_info(), self._loop).result()
+        # This callback runs on paho's network thread, which also performs the
+        # automatic reconnect. It must neither block on the event loop (the
+        # loop may be inside ``disconnect()`` joining this very thread) nor
+        # raise: an exception escaping a paho callback terminates the network
+        # thread, so the client would never reconnect while ``is_connected()``
+        # keeps returning True. Refresh the credentials in the background;
+        # paho reconnects with the previous ones meanwhile, and a refused
+        # CONNACK simply brings us back here.
+        if self._mqtt_info_refresh is not None and not self._mqtt_info_refresh.done():
+            return
+        refresh = self._refresh_mqtt_info_after_disconnect(reason_code)
+        try:
+            self._mqtt_info_refresh = asyncio.run_coroutine_threadsafe(
+                refresh, self._loop
+            )
+        except RuntimeError:  # Event loop is closed
+            refresh.close()
+
+    async def _refresh_mqtt_info_after_disconnect(
+        self, reason_code: mqtt.ReasonCode
+    ) -> None:
+        """Re-fetch MQTT credentials so paho's automatic reconnect can use them."""
+        try:
+            async with asyncio.timeout(MQTT_INFO_REFRESH_TIMEOUT):
+                await self._set_mqtt_info()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning(
+                "MQTT disconnected (%s) and refreshing the MQTT connection info "
+                "failed (%s); reconnecting with the previous credentials",
+                reason_code,
+                str(err.__cause__ or err) or type(err).__name__,
+            )
 
     @abstractmethod
     def _process_message_payload(self, msg: mqtt.MQTTMessage) -> Any:
