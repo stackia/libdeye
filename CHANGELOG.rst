@@ -13,6 +13,8 @@ Unreleased
   True and published commands were silently dropped. The MQTT-info refresh now
   runs in the background with a bounded timeout, failures are logged, and paho
   keeps reconnecting on its own (`#67 <https://github.com/stackia/libdeye/issues/67>`_).
+- Never let a malformed MQTT payload raise inside paho's network thread; log
+  and ignore the message instead.
 
 Version 3.0.3
 =============

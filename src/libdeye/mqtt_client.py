@@ -504,12 +504,13 @@ class BaseDeyeMqttClient(ABC):
             return
         callbacks = self._subscribers[msg.topic]
         try:
-            for callback in callbacks.copy():
-                self._loop.call_soon_threadsafe(
-                    callback, self._process_message_payload(msg)
-                )
-        except json.JSONDecodeError, KeyError:
-            pass
+            payload = self._process_message_payload(msg)
+        except Exception as err:  # noqa: BLE001
+            # Same rule as above: nothing may escape into paho's network thread.
+            _LOGGER.warning("Ignoring malformed MQTT message on %s: %r", msg.topic, err)
+            return
+        for callback in callbacks.copy():
+            self._loop.call_soon_threadsafe(callback, payload)
 
     def _subscribe_topic(
         self,

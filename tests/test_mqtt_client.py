@@ -383,6 +383,32 @@ class TestBaseDeyeMqttClient:
             base_client._mqtt_on_message(base_client._mqtt, None, message)
             mock_call_soon_threadsafe.assert_not_called()
 
+    def test_mqtt_on_message_payload_error_is_logged(
+        self, base_client: MockBaseDeyeMqttClient, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        """Test any payload processing error is swallowed, not raised into paho."""
+        topic = "test/topic"
+        callback = MagicMock()
+        base_client._subscribers = {topic: {callback}}
+        message = MagicMock(spec=mqtt.MQTTMessage)
+        message.topic = topic
+        message.payload = b"{}"
+
+        with (
+            patch.object(
+                base_client,
+                "_process_message_payload",
+                side_effect=TypeError("unexpected payload shape"),
+            ),
+            patch.object(
+                base_client._loop, "call_soon_threadsafe"
+            ) as mock_call_soon_threadsafe,
+        ):
+            base_client._mqtt_on_message(base_client._mqtt, None, message)
+
+        mock_call_soon_threadsafe.assert_not_called()
+        assert "Ignoring malformed MQTT message on test/topic" in caplog.text
+
     def test_subscribe_topic(self, base_client: MockBaseDeyeMqttClient) -> None:
         """Test _subscribe_topic method."""
         topic = "test/topic"
