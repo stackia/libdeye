@@ -5,6 +5,9 @@ Changelog
 Unreleased
 ==========
 
+Version 3.0.4
+=============
+
 - Fix the MQTT client never recovering from an unexpected disconnect when the
   cloud API is unreachable at that moment (for example a DNS timeout during a
   router reboot). ``on_disconnect`` blocked paho's network thread on the event
